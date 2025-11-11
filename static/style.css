@@ -1,17 +1,29 @@
 body {
-  font-family: "Hiragino Sans", sans-serif;
-  background: linear-gradient(180deg, #fdfcfb 0%, #e2d1c3 100%);
+  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background: linear-gradient(180deg, #fff8f2 0%, #fbe2d1 100%);
   margin: 0;
   padding: 0;
 }
 
 .chat-container {
-  max-width: 500px;
+  max-width: 520px;
   margin: 2rem auto;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   padding: 20px;
+}
+
+h1 {
+  margin-top: 0;
+  text-align: center;
+  color: #333;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
 }
 
 #messages {
@@ -30,7 +42,7 @@ body {
 
 .input-area {
   display: flex;
-  gap: 5px;
+  gap: 6px;
 }
 
 #userInput {
