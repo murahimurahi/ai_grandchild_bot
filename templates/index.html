@@ -1,92 +1,80 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>おはなし横丁</title>
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="{{ season }}">
   <div class="container">
     <h1>おはなし横丁</h1>
-    <p class="subtitle">やさしく話せる、あたたかい時間をどうぞ。</p>
+    <p class="desc">気軽に話して、心を整える場所です。</p>
 
-    <form id="talkForm">
-      <div class="radio-group">
-        <label><input type="radio" name="character" value="みさちゃん（孫娘）" checked>みさちゃん（孫娘）</label>
-        <label><input type="radio" name="character" value="ゆうくん（孫息子）">ゆうくん（孫息子）</label>
-        <label><input type="radio" name="character" value="ソウタ（息子）">ソウタ（息子）</label>
-      </div>
+    <div id="reminder" class="reminder hidden">👋 こんにちは、今日も少しお話ししましょうか？</div>
 
-      <ol class="howto">
-        <li>思ったことを一言つぶやく。</li>
-        <li>「話しかける」または音声入力で話せます。</li>
-        <li>AIがすぐにやさしく返してくれます。</li>
-      </ol>
+    <div id="chat-box"></div>
 
-      <textarea id="message" placeholder="こんにちは、今日はね…"></textarea>
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="今日はどんな一日でしたか？">
+      <button id="sendBtn">話す</button>
+    </div>
 
-      <div class="btns">
-        <button type="button" id="voiceBtn" class="btn blue">🎙 音声入力</button>
-        <button type="submit" class="btn pink">話しかける</button>
-      </div>
-    </form>
-
-    <div id="replyArea" class="reply"></div>
-    <footer>© おはなし横丁</footer>
+    <div class="buttons">
+      <button id="fontPlus">文字＋</button>
+      <button id="fontMinus">文字−</button>
+    </div>
   </div>
 
   <script>
-    const form = document.getElementById("talkForm");
-    const replyArea = document.getElementById("replyArea");
-    const voiceBtn = document.getElementById("voiceBtn");
-    const messageInput = document.getElementById("message");
+    const chatBox = document.getElementById("chat-box");
+    const input = document.getElementById("userInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-    // 🎤 音声入力ボタンで自動送信
-    voiceBtn.addEventListener("click", () => {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-      recognition.lang = "ja-JP";
-      recognition.start();
+    function appendMessage(role, text) {
+      const div = document.createElement("div");
+      div.className = role;
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
-      recognition.onresult = (e) => {
-        messageInput.value = e.results[0][0].transcript;
-        sendMessage();  // 入力後自動送信
-      };
-      recognition.onerror = () => {
-        replyArea.textContent = "音声を認識できませんでした。";
-      };
-    });
-
-    // ✉️ フォーム送信（文字入力）
-    form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      sendMessage();
-    });
-
-    // 💬 サーバへ送信
-    function sendMessage() {
-      const message = messageInput.value.trim();
-      const character = document.querySelector('input[name="character"]:checked').value;
+    sendBtn.addEventListener("click", () => {
+      const message = input.value.trim();
       if (!message) return;
-
-      replyArea.innerHTML = "考え中…";
+      appendMessage("user", "👤 " + message);
+      input.value = "";
 
       fetch("/talk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, character })
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message})
       })
       .then(res => res.json())
       .then(data => {
-        replyArea.innerHTML = `
-          <p>${data.reply}</p>
-          <audio controls autoplay src="${data.audio_url}"></audio>
-        `;
-      })
-      .catch(() => {
-        replyArea.textContent = "接続がうまくいきませんでした。";
+        appendMessage("ai", "🤖 " + data.mood);
+        appendMessage("ai", "💬 " + data.reply);
       });
-    }
+    });
+
+    // エンターキー対応
+    input.addEventListener("keypress", e => {
+      if (e.key === "Enter") sendBtn.click();
+    });
+
+    // フォントサイズ調整
+    const fontPlus = document.getElementById("fontPlus");
+    const fontMinus = document.getElementById("fontMinus");
+    let size = 16;
+    fontPlus.onclick = () => { size += 2; chatBox.style.fontSize = size + "px"; };
+    fontMinus.onclick = () => { size = Math.max(12, size - 2); chatBox.style.fontSize = size + "px"; };
+
+    // 今日も話そう通知
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        document.getElementById("reminder").classList.remove("hidden");
+      }, 2000);
+    });
   </script>
 </body>
 </html>
