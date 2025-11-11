@@ -28,26 +28,29 @@ def talk():
     )
     reply_text = response.choices[0].message.content
 
-    # --- キャラ別音声タイプ ---
+    # --- キャラ別音声タイプ（sol採用） ---
     if character == "みさちゃん（孫娘）":
-        voice_type = "verse"
+        voice_type = "sol"     # 明るく高めの女性声
     elif character == "ゆうくん（孫息子）":
-        voice_type = "alloy"
+        voice_type = "verse"   # 若い男性
     else:
-        voice_type = "nova"
+        voice_type = "nova"    # 落ち着いた男性
 
-    # --- 音声生成（確実に動作する構文） ---
+    # --- 音声生成（軽量＆高速TTSモデル） ---
     os.makedirs("static", exist_ok=True)
     audio_path = "static/output.mp3"
 
     with client.audio.speech.with_streaming_response.create(
-        model="gpt-4o-mini-tts",
+        model="gpt-4o-mini-tts-lora",  # 高速TTSモデル
         voice=voice_type,
         input=reply_text
     ) as response:
         response.stream_to_file(audio_path)
 
-    return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
+    return jsonify({
+        "reply": reply_text,
+        "audio_url": f"/{audio_path}"
+    })
 
 
 if __name__ == "__main__":
