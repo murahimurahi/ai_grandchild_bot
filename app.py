@@ -2,61 +2,83 @@ import os
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 
+# ---------------------------------------------------------------------
+# 基本設定
+# ---------------------------------------------------------------------
 app = Flask(__name__)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
+# ---------------------------------------------------------------------
+# ルート
+# ---------------------------------------------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
+# ---------------------------------------------------------------------
+# 会話処理
+# ---------------------------------------------------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
     message = data.get("message", "")
     character = data.get("character", "ソウタ（息子）")
 
-    # --- テキスト返答生成 ---
-    chat = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": f"あなたは{character}として、60代の利用者にやさしく話します。言葉遣いは穏やかで、家族に話すように返答してください。"
-            },
-            {"role": "user", "content": message}
-        ]
-    )
-    reply_text = chat.choices[0].message.content.strip()
+    # --- AIの返答を生成 ---
+    try:
+        chat_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"あなたは{character}として、60代の利用者にやさしく話します。"
+                               "言葉遣いは穏やかで、家族に話すように返答してください。"
+                },
+                {"role": "user", "content": message}
+            ]
+        )
+        reply_text = chat_response.choices[0].message.content.strip()
+    except Exception as e:
+        print("Chatエラー:", e)
+        return jsonify({"reply": "ごめんね、少し調子が悪いみたい。", "audio_url": None})
 
-    # --- 声モデル設定（sol） ---
+    # --- キャラ別音声タイプ（sol採用） ---
     if character == "みさちゃん（孫娘）":
-        voice_type = "sol"
+        voice_type = "sol"     # 明るい女性の声
     elif character == "ゆうくん（孫息子）":
-        voice_type = "verse"
+        voice_type = "verse"   # 若い男性
     else:
-        voice_type = "nova"
+        voice_type = "nova"    # 落ち着いた男性（息子）
 
-    # --- 音声生成（安定構文） ---
+    # --- 音声生成（安定TTSモデル使用） ---
     os.makedirs("static", exist_ok=True)
     audio_path = "static/output.mp3"
 
     try:
-        speech = client.audio.speech.create(
-            model="gpt-4o-mini-tts",  # ← 安定モデル
+        speech_response = client.audio.speech.create(
+            model="gpt-4o-mini-tts",   # ← 安定版TTSモデル
             voice=voice_type,
             input=reply_text
         )
 
-        # openai>=1.13.0では .content に音声バイナリが入る
+        # openai>=1.13.3では .content に音声データが格納される
         with open(audio_path, "wb") as f:
-            f.write(speech.content)
+            f.write(speech_response.content)
+
+        print("音声生成成功:", voice_type)
 
     except Exception as e:
         print("音声生成エラー:", e)
         return jsonify({"reply": reply_text, "audio_url": None})
 
-    return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
+    return jsonify({
+        "reply": reply_text,
+        "audio_url": f"/{audio_path}"
+    })
 
-
+# ---------------------------------------------------------------------
+# 起動設定（Render用）
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
+    # Renderでは gunicorn が使われるが、ローカル動作確認用
     app.run(host="0.0.0.0", port=5000)
