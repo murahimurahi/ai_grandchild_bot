@@ -1,7 +1,7 @@
 import os
 import pathlib
 import openai
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, render_template
 from flask_cors import CORS
 
 # ---------------------------------------------------------------------
@@ -25,7 +25,7 @@ def get_voice_type(character: str):
         return "nova"   # 落ち着いた父親風
 
 # ---------------------------------------------------------------------
-# トーク処理（テキスト→音声生成）
+# 音声生成API
 # ---------------------------------------------------------------------
 @app.route("/speak", methods=["POST"])
 def speak():
@@ -34,10 +34,11 @@ def speak():
     character = data.get("character", "みさちゃん（孫娘）")
     voice_type = get_voice_type(character)
 
-    # OpenAI TTS で音声生成
+    # 音声ファイル保存パス
     speech_file_path = BASE_DIR / "static" / "audio" / "output.mp3"
     speech_file_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # OpenAI TTS 音声生成
     with openai.audio.speech.with_streaming_response.create(
         model="gpt-4o-mini-tts",
         voice=voice_type,
@@ -55,11 +56,14 @@ def static_files(filename):
     return send_from_directory(BASE_DIR / "static", filename)
 
 # ---------------------------------------------------------------------
-# ルート
+# HTMLルート
 # ---------------------------------------------------------------------
 @app.route("/")
 def index():
-    return "おはなし横丁 v2.1 稼働中"
+    return render_template("index.html")
 
+# ---------------------------------------------------------------------
+# メイン
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
