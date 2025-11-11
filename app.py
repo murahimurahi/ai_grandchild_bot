@@ -33,18 +33,15 @@ def talk():
         print("Chatエラー:", e)
         return jsonify({"reply": "ごめんね、少し調子が悪いみたい。", "audio_url": None})
 
-    # --- キャラ別の声と話し方スタイル設定 ---
+    # --- キャラ別音声タイプ（音色差を最大化） ---
     if character == "みさちゃん（孫娘）":
-        voice_type = "shimmer"
-        style = "明るく元気に、優しく語尾を伸ばして話してください。"
+        voice_type = "shimmer"   # 高めで女性的な声
     elif character == "ゆうくん（孫息子）":
-        voice_type = "verse"
-        style = "少年らしく少し早口で、はきはきと話してください。"
+        voice_type = "verse"     # やや高めの若い男性声
     else:
-        voice_type = "alloy"
-        style = "落ち着いてゆっくり、優しく語りかけるように話してください。"
+        voice_type = "onyx"      # 低めで落ち着いた男性声（父親役に最適）
 
-    # --- 音声生成 ---
+    # --- 音声生成（安定モデル） ---
     os.makedirs("static", exist_ok=True)
     audio_path = "static/output.mp3"
 
@@ -52,7 +49,7 @@ def talk():
         speech_response = client.audio.speech.create(
             model="gpt-4o-mini-tts",
             voice=voice_type,
-            input=f"{style}\n{reply_text}"  # ← 話し方指示を含めて渡す
+            input=reply_text  # ← 指示文は入れない
         )
 
         with open(audio_path, "wb") as f:
