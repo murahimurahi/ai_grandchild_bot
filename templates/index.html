@@ -11,13 +11,12 @@
     <p>やさしく話せる、あたたかい時間をどうぞ。</p>
 
     <form id="talkForm">
-      <!-- ✅ キャラクター選択は削除 -->
       <p>① 思ったことを一言つぶやく。</p>
-      <p>② 「話しかける」ボタン、または音声入力（マイクのボタン）で話せます。</p>
+      <p>② 「話しかける」ボタン、または音声入力（マイクの絵のボタン）で話せます。</p>
       <p>③ ゆうくんがすぐにやさしく返してくれます。</p>
 
       <textarea id="message" placeholder="こんにちは"></textarea><br>
-      <button type="button" id="voiceBtn">🎙 音声入力</button>
+      <button type="button" id="voiceBtn">🎙 マイク</button>
       <button type="submit">話しかける</button>
     </form>
 
@@ -41,10 +40,17 @@
 
     const data = await res.json();
 
-    responseDiv.innerHTML = `
-      <p>${data.reply}</p>
-      ${data.audio_url ? `<audio controls src="${data.audio_url}"></audio>` : ''}
-    `;
+    // 🎧 返答テキストと音声をセット
+    responseDiv.innerHTML = `<p>${data.reply}</p>`;
+
+    if (data.audio_url) {
+      const audio = new Audio(data.audio_url);
+      audio.play().catch(err => {
+        console.log("自動再生がブロックされた場合:", err);
+        responseDiv.innerHTML += `<p>▶️ 再生ボタンを押して聞いてね。</p>
+        <audio controls src="${data.audio_url}"></audio>`;
+      });
+    }
   });
 
   // 🎙 音声入力
@@ -55,7 +61,7 @@
     recognition.start();
     recognition.onresult = (e) => {
       document.getElementById('message').value = e.results[0][0].transcript;
-      form.requestSubmit(); // 音声で入力したら自動送信
+      form.requestSubmit();
     };
   });
   </script>
