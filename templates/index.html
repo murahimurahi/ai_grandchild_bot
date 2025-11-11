@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AI孫ボット</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>👵🧒 AI孫ボット</h1>
+    <p>あなたが話しかけると、孫の声で返事をします。</p>
+    
+    <div class="chat">
+      <textarea id="message" placeholder="話しかけてみてください"></textarea>
+      <button id="sendBtn">話しかける</button>
+    </div>
+
+    <div id="replyArea"></div>
+    <audio id="voice" controls></audio>
+  </div>
+
+  <script>
+  document.getElementById("sendBtn").onclick = async () => {
+    const msg = document.getElementById("message").value;
+    const res = await fetch("/talk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: msg, user_id: "demo" })
+    });
+    const data = await res.json();
+    document.getElementById("replyArea").textContent = data.reply;
+    document.getElementById("voice").src = data.audio + "?t=" + Date.now();
+    document.getElementById("voice").play();
+    document.getElementById("message").value = "";
+  };
+  </script>
+</body>
+</html>
