@@ -1,0 +1,38 @@
+body {
+  background: #fdf7f2;
+  font-family: "Hiragino Sans", sans-serif;
+  text-align: center;
+  color: #333;
+}
+.container {
+  margin-top: 40px;
+}
+textarea {
+  width: 80%;
+  height: 80px;
+  font-size: 18px;
+  border-radius: 12px;
+  padding: 10px;
+  border: 2px solid #ccc;
+  outline: none;
+}
+button {
+  background: #f8caca;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 18px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+button:hover {
+  background: #ffdede;
+}
+#replyArea {
+  margin-top: 20px;
+  font-size: 22px;
+  color: #444;
+}
+audio {
+  margin-top: 20px;
+}
