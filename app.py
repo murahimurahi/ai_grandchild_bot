@@ -1,87 +1,88 @@
-import os, json, random, datetime
+import os
+import json
 from flask import Flask, request, jsonify, render_template
 from openai import OpenAI
 
 app = Flask(__name__)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# ------------------------------------------
-# 記憶データ（ユーザーごとに軽量保存）
-# ------------------------------------------
-MEMORY_FILE = "data/memory.json"
+# ---------------------------------------------------------------------
+# 基本設定
+# ---------------------------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+MEMORY_FILE = os.path.join(DATA_DIR, "memory.json")
 
+# データフォルダを自動生成
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# memory.json が存在しない場合に自動作成
 if not os.path.exists(MEMORY_FILE):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-        json.dump({}, f, ensure_ascii=False, indent=2)
+        json.dump([], f, ensure_ascii=False, indent=2)
 
-def load_memory():
-    with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+# OpenAIクライアント初期化
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def save_memory(data):
-    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-# ------------------------------------------
-# 会話生成
-# ------------------------------------------
-def generate_reply(user_id, message):
-    memory = load_memory()
-    context = memory.get(user_id, "")
-
-    prompt = f"""
-あなたは優しい孫として、60〜80代の祖父母と話しています。
-口調は温かく、柔らかく、親しみやすい日本語で答えてください。
-今日の会話履歴:
-{context}
-祖父母の発言: {message}
-"""
-
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role":"system","content":"あなたは優しい孫です。"},
-                  {"role":"user","content":prompt}],
-        temperature=0.8
-    )
-
-    reply = response.choices[0].message.content.strip()
-
-    # 記憶更新
-    memory[user_id] = (context + f"\n祖父母: {message}\n孫: {reply}")[-1000:]
-    save_memory(memory)
-    return reply
-
-# ------------------------------------------
-# 音声生成 (OpenAI gpt-4o-mini-tts)
-# ------------------------------------------
-def generate_voice(text, voice="nova"):
-    speech = client.audio.speech.create(
-        model="gpt-4o-mini-tts",
-        voice=voice,
-        input=text
-    )
-    file_path = "static/reply.mp3"
-    with open(file_path, "wb") as f:
-        f.write(speech.read())
-    return file_path
-
-# ------------------------------------------
-# Web動作デモ（Render確認用）
-# ------------------------------------------
-@app.route("/", methods=["GET"])
-def home():
+# ---------------------------------------------------------------------
+# トップページ
+# ---------------------------------------------------------------------
+@app.route("/")
+def index():
     return render_template("index.html")
 
+# ---------------------------------------------------------------------
+# 話しかけAPI
+# ---------------------------------------------------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.get_json()
-    user_id = data.get("user_id", "default")
-    message = data.get("message", "")
-    voice = data.get("voice", "nova")
+    user_text = data.get("text", "")
+    speaker = data.get("speaker", "みさちゃん")
 
-    reply = generate_reply(user_id, message)
-    audio_path = generate_voice(reply, voice)
-    return jsonify({"reply": reply, "audio": audio_path})
+    if not user_text:
+        return jsonify({"error": "empty input"}), 400
 
+    # 過去ログ読み込み
+    with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+        memory = json.load(f)
+
+    # キャラクター別プロンプト
+    if speaker == "みさちゃん":
+        prompt = f"あなたは7歳の孫娘『みさちゃん』として、優しく無邪気な口調で話してください。返答は短く自然に。ユーザーの発言：「{user_text}」"
+        voice = "verse"
+    elif speaker == "ゆうくん":
+        prompt = f"あなたは10歳の孫息子『ゆうくん』として、少し元気で素直な男の子のように返答してください。返答は短く自然に。ユーザーの発言：「{user_text}」"
+        voice = "nova"
+    else:
+        prompt = f"あなたは30代の息子『ソウタ』として、落ち着いた低い声で優しく返答してください。返答は短く自然に。ユーザーの発言：「{user_text}」"
+        voice = "alloy"
+
+    # OpenAI テキスト生成
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "system", "content": prompt}]
+    )
+    ai_reply = completion.choices[0].message.content.strip()
+
+    # 会話記録を保存
+    memory.append({"user": user_text, "ai": ai_reply})
+    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(memory[-30:], f, ensure_ascii=False, indent=2)  # 最新30件保持
+
+    # 音声ファイル生成
+    tts = client.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice=voice,
+        input=ai_reply
+    )
+    audio_path = os.path.join("static", "reply.mp3")
+    with open(audio_path, "wb") as f:
+        f.write(tts.read())
+
+    return jsonify({"reply": ai_reply, "audio": f"/static/reply.mp3"})
+
+# ---------------------------------------------------------------------
+# メイン
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
