@@ -1,38 +1,78 @@
 body {
-  background: #fdf7f2;
-  font-family: "Hiragino Sans", sans-serif;
-  text-align: center;
+  font-family: "Hiragino Maru Gothic ProN", sans-serif;
+  background-color: #f5fafc;
   color: #333;
+  text-align: center;
+  padding: 30px;
 }
+
 .container {
-  margin-top: 40px;
+  max-width: 480px;
+  margin: auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
 }
+
+h1 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.select-box label {
+  margin: 0 10px;
+  font-size: 15px;
+}
+
 textarea {
-  width: 80%;
+  width: 90%;
   height: 80px;
-  font-size: 18px;
-  border-radius: 12px;
-  padding: 10px;
-  border: 2px solid #ccc;
-  outline: none;
+  margin: 10px auto;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  padding: 8px;
+  font-size: 16px;
 }
+
+.btns {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
 button {
-  background: #f8caca;
   border: none;
   padding: 10px 20px;
-  border-radius: 10px;
-  font-size: 18px;
-  margin-top: 10px;
+  border-radius: 8px;
+  font-size: 16px;
   cursor: pointer;
 }
-button:hover {
-  background: #ffdede;
+
+#micBtn {
+  background: #a6c8ff;
 }
-#replyArea {
-  margin-top: 20px;
-  font-size: 22px;
-  color: #444;
+
+.talk {
+  background: #ffb6b6;
 }
-audio {
+
+#result {
   margin-top: 20px;
+  font-size: 18px;
+  color: #333;
+}
+
+footer {
+  margin-top: 25px;
+  font-size: 12px;
+  color: #777;
 }
