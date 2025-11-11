@@ -1,66 +1,73 @@
 body {
   font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
-  background: linear-gradient(180deg, #fff8f2 0%, #fbe2d1 100%);
+  background-color: #f5f7fa;
   margin: 0;
   padding: 0;
 }
 
-.chat-container {
-  max-width: 520px;
-  margin: 2rem auto;
+.container {
+  max-width: 480px;
   background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 20px;
+  margin: 3rem auto;
+  padding: 2rem;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  text-align: center;
 }
 
 h1 {
-  margin-top: 0;
-  text-align: center;
   color: #333;
 }
 
-.subtitle {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-#messages {
-  height: 300px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 10px;
+.desc {
+  color: #777;
   margin-bottom: 1rem;
-  background: #fafafa;
 }
 
-.message {
-  margin: 8px 0;
+.steps {
+  text-align: left;
+  font-size: 0.9rem;
+  color: #555;
 }
 
-.input-area {
-  display: flex;
-  gap: 6px;
-}
-
-#userInput {
-  flex: 1;
-  padding: 8px;
-  border-radius: 6px;
+textarea {
+  width: 100%;
+  height: 80px;
+  margin-top: 1rem;
+  padding: 0.6rem;
+  border-radius: 8px;
   border: 1px solid #ccc;
+  resize: none;
+  font-size: 1rem;
+}
+
+.buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
 }
 
 button {
-  padding: 8px 12px;
+  flex: 1;
+  margin: 0 5px;
+  padding: 0.7rem;
   border: none;
-  border-radius: 6px;
-  background-color: #f2b5d4;
-  color: #333;
+  border-radius: 8px;
+  font-size: 1rem;
   cursor: pointer;
 }
 
-button:hover {
-  background-color: #f8d1e3;
+.mic {
+  background-color: #8ecae6;
+  color: #fff;
+}
+
+.talk {
+  background-color: #fbb6b9;
+  color: #fff;
+}
+
+audio {
+  margin-top: 1rem;
+  width: 100%;
 }
