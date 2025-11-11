@@ -1,7 +1,7 @@
 import os
 import pathlib
 import openai
-from flask import Flask, request, jsonify, send_from_directory, render_template
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
 # ---------------------------------------------------------------------
@@ -18,14 +18,14 @@ openai.api_key = os.environ.get("OPENAI_API_KEY")
 # ---------------------------------------------------------------------
 def get_voice_type(character: str):
     if character == "みさちゃん（孫娘）":
-        return "verse"  # 若い女性
+        return "verse"  # 明るい女性
     elif character == "ゆうくん（孫息子）":
-        return "alloy"  # 少年寄り
+        return "alloy"  # 少年
     else:
-        return "nova"   # 落ち着いた父親風
+        return "nova"   # 落ち着いた男性（息子）
 
 # ---------------------------------------------------------------------
-# 音声生成API
+# トーク処理
 # ---------------------------------------------------------------------
 @app.route("/speak", methods=["POST"])
 def speak():
@@ -34,29 +34,30 @@ def speak():
     character = data.get("character", "みさちゃん（孫娘）")
     voice_type = get_voice_type(character)
 
-    # 音声ファイル保存パス
+    prompt = f"{character}として、おじいちゃんにやさしく返事してください。「{text}」に返すように。"
     speech_file_path = BASE_DIR / "static" / "audio" / "output.mp3"
     speech_file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # OpenAI TTS 音声生成
-    with openai.audio.speech.with_streaming_response.create(
-        model="gpt-4o-mini-tts",
-        voice=voice_type,
-        input=text
-    ) as response:
-        response.stream_to_file(speech_file_path)
+    try:
+        # OpenAI音声生成
+        response = openai.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice=voice_type,
+            input=f"こんにちは、おじいちゃん！{text}についてお話しできてうれしいです。"
+        )
+        with open(speech_file_path, "wb") as f:
+            f.write(response.read())
 
-    return jsonify({"audio_url": "/static/audio/output.mp3"})
+        message = "こんにちは、おじいちゃん！お元気ですか？今日は何か楽しいことがありましたか？"
+        return jsonify({
+            "message": message,
+            "audio_url": "/static/audio/output.mp3"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # ---------------------------------------------------------------------
-# 静的ファイル
-# ---------------------------------------------------------------------
-@app.route("/static/<path:filename>")
-def static_files(filename):
-    return send_from_directory(BASE_DIR / "static", filename)
-
-# ---------------------------------------------------------------------
-# HTMLルート
+# ルート
 # ---------------------------------------------------------------------
 @app.route("/")
 def index():
