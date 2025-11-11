@@ -15,38 +15,37 @@ def talk():
     message = data.get("message", "")
     character = data.get("character", "ソウタ（息子）")
 
-    # --- AIが返す会話文 ---
+    # --- AIの返答を生成 ---
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {
                 "role": "system",
-                "content": f"あなたは{character}として60代の利用者にやさしく会話します。言葉遣いは親しみやすく、ゆっくり落ち着いたトーンで。"
+                "content": f"あなたは{character}として、60代の利用者にやさしく話します。言葉遣いは穏やかで、家族に話すように返答してください。"
             },
             {"role": "user", "content": message}
         ]
     )
     reply_text = response.choices[0].message.content
 
-    # --- キャラクターごとに声を切り替え ---
+    # --- キャラ別音声タイプ ---
     if character == "みさちゃん（孫娘）":
-        voice_type = "verse"      # 柔らかく明るい女の子
+        voice_type = "verse"
     elif character == "ゆうくん（孫息子）":
-        voice_type = "nova"       # 少年っぽい声
+        voice_type = "nova"
     else:
-        voice_type = "alloy"      # 低めのイケボ（息子）
+        voice_type = "alloy"
 
-    # --- 音声生成（TTS） ---
-    tts = client.audio.speech.create(
+    # --- 音声生成（新API対応） ---
+    speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
         voice=voice_type,
         input=reply_text
     )
 
-    # --- 音声ファイル保存 ---
     audio_path = "static/output.mp3"
     with open(audio_path, "wb") as f:
-        f.write(tts.audio)
+        f.write(speech.read())  # ← ここが変更点！
 
     return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
 
