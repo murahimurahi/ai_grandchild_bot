@@ -15,7 +15,7 @@ def talk():
     message = data.get("message", "")
     character = data.get("character", "ソウタ（息子）")
 
-    # --- AIの返答を生成 ---
+    # --- AIの返答生成 ---
     try:
         chat_response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -33,15 +33,15 @@ def talk():
         print("Chatエラー:", e)
         return jsonify({"reply": "ごめんね、少し調子が悪いみたい。", "audio_url": None})
 
-    # --- キャラ別音声タイプ（音色差を最大化） ---
+    # --- ボイスモデル（日本語でも差が出る組み合わせ） ---
     if character == "みさちゃん（孫娘）":
-        voice_type = "shimmer"   # 高めで女性的な声
+        voice_type = "fable"    # 高めで女性寄りの声
     elif character == "ゆうくん（孫息子）":
-        voice_type = "verse"     # やや高めの若い男性声
+        voice_type = "verse"    # 若い男性
     else:
-        voice_type = "onyx"      # 低めで落ち着いた男性声（父親役に最適）
+        voice_type = "onyx"     # 低音・落ち着いた男性
 
-    # --- 音声生成（安定モデル） ---
+    # --- 音声生成 ---
     os.makedirs("static", exist_ok=True)
     audio_path = "static/output.mp3"
 
@@ -49,7 +49,7 @@ def talk():
         speech_response = client.audio.speech.create(
             model="gpt-4o-mini-tts",
             voice=voice_type,
-            input=reply_text  # ← 指示文は入れない
+            input=reply_text
         )
 
         with open(audio_path, "wb") as f:
