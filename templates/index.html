@@ -11,79 +11,82 @@
     <h1>おはなし横丁</h1>
     <p class="subtitle">やさしく話せる、あたたかい時間をどうぞ。</p>
 
-    <div class="select-box">
-      <label><input type="radio" name="speaker" value="みさちゃん" checked /> みさちゃん（孫娘）</label>
-      <label><input type="radio" name="speaker" value="ゆうくん" /> ゆうくん（孫息子）</label>
-      <label><input type="radio" name="speaker" value="ソウタ" /> ソウタ（息子）</label>
-    </div>
+    <form id="talkForm">
+      <div class="radio-group">
+        <label><input type="radio" name="character" value="みさちゃん（孫娘）" checked>みさちゃん（孫娘）</label>
+        <label><input type="radio" name="character" value="ゆうくん（孫息子）">ゆうくん（孫息子）</label>
+        <label><input type="radio" name="character" value="ソウタ（息子）">ソウタ（息子）</label>
+      </div>
 
-    <div class="howto">
-      <p>① 思ったことを一言つぶやく。</p>
-      <p>② 「話しかける」または音声入力で話せます。</p>
-      <p>③ AIがすぐにやさしく返してくれます。</p>
-    </div>
+      <ol class="howto">
+        <li>思ったことを一言つぶやく。</li>
+        <li>「話しかける」または音声入力で話せます。</li>
+        <li>AIがすぐにやさしく返してくれます。</li>
+      </ol>
 
-    <textarea id="userText" placeholder="例）今日は少し疲れたな…"></textarea>
-    <div class="btns">
-      <button id="micBtn">🎤 音声入力</button>
-      <button id="talkBtn" class="talk">話しかける</button>
-    </div>
+      <textarea id="message" placeholder="こんにちは、今日はね…"></textarea>
 
-    <div id="result"></div>
-    <audio id="audio" controls hidden></audio>
+      <div class="btns">
+        <button type="button" id="voiceBtn" class="btn blue">🎙 音声入力</button>
+        <button type="submit" class="btn pink">話しかける</button>
+      </div>
+    </form>
+
+    <div id="replyArea" class="reply"></div>
+    <footer>© おはなし横丁</footer>
   </div>
 
-  <footer>© おはなし横丁</footer>
-
   <script>
-    const talkBtn = document.getElementById("talkBtn");
-    const micBtn = document.getElementById("micBtn");
-    const userText = document.getElementById("userText");
-    const result = document.getElementById("result");
-    const audio = document.getElementById("audio");
+    const form = document.getElementById("talkForm");
+    const replyArea = document.getElementById("replyArea");
+    const voiceBtn = document.getElementById("voiceBtn");
+    const messageInput = document.getElementById("message");
 
-    async function sendText() {
-      const text = userText.value.trim();
-      const speaker = document.querySelector('input[name="speaker"]:checked').value;
-      if (!text) return;
+    // 🎤 音声入力ボタンで自動送信
+    voiceBtn.addEventListener("click", () => {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "ja-JP";
+      recognition.start();
 
-      result.innerText = "考え中...";
-      try {
-        const res = await fetch("/talk", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, speaker }),
-        });
-        const data = await res.json();
-        if (data.reply) {
-          result.innerText = data.reply;
-          audio.src = data.audio;
-          audio.hidden = false;
-          audio.play();
-        } else {
-          result.innerText = "もう一度話しかけてみてください。";
-        }
-      } catch (e) {
-        result.innerText = "接続がうまくいきませんでした。";
-      }
-    }
-
-    // 手動送信
-    talkBtn.addEventListener("click", sendText);
-
-    // 音声入力 → 自動送信
-    micBtn.addEventListener("click", () => {
-      const rec = new webkitSpeechRecognition();
-      rec.lang = "ja-JP";
-      rec.start();
-      rec.onresult = (e) => {
-        userText.value = e.results[0][0].transcript;
-        sendText(); // 入力完了後に自動送信
+      recognition.onresult = (e) => {
+        messageInput.value = e.results[0][0].transcript;
+        sendMessage();  // 入力後自動送信
       };
-      rec.onerror = () => {
-        result.innerText = "音声入力に失敗しました。";
+      recognition.onerror = () => {
+        replyArea.textContent = "音声を認識できませんでした。";
       };
     });
+
+    // ✉️ フォーム送信（文字入力）
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
+
+    // 💬 サーバへ送信
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      const character = document.querySelector('input[name="character"]:checked').value;
+      if (!message) return;
+
+      replyArea.innerHTML = "考え中…";
+
+      fetch("/talk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, character })
+      })
+      .then(res => res.json())
+      .then(data => {
+        replyArea.innerHTML = `
+          <p>${data.reply}</p>
+          <audio controls autoplay src="${data.audio_url}"></audio>
+        `;
+      })
+      .catch(() => {
+        replyArea.textContent = "接続がうまくいきませんでした。";
+      });
+    }
   </script>
 </body>
 </html>
