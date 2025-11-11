@@ -42,13 +42,13 @@ def talk():
         print("Chatエラー:", e)
         return jsonify({"reply": "ごめんね、少し調子が悪いみたい。", "audio_url": None})
 
-    # --- キャラ別音声タイプ（sol採用） ---
+    # --- キャラ別音声タイプ（全員喋る構成） ---
     if character == "みさちゃん（孫娘）":
-        voice_type = "sol"     # 明るい女性の声
+        voice_type = "shimmer"   # 明るく高めの女性声（sol代替）
     elif character == "ゆうくん（孫息子）":
-        voice_type = "verse"   # 若い男性
+        voice_type = "verse"     # 若い男性声
     else:
-        voice_type = "nova"    # 落ち着いた男性（息子）
+        voice_type = "alloy"     # 落ち着いた男性声（息子）
 
     # --- 音声生成（安定TTSモデル使用） ---
     os.makedirs("static", exist_ok=True)
@@ -56,7 +56,7 @@ def talk():
 
     try:
         speech_response = client.audio.speech.create(
-            model="gpt-4o-mini-tts",   # ← 安定版TTSモデル
+            model="gpt-4o-mini-tts",   # ← 安定モデル
             voice=voice_type,
             input=reply_text
         )
@@ -65,20 +65,10 @@ def talk():
         with open(audio_path, "wb") as f:
             f.write(speech_response.content)
 
-        print("音声生成成功:", voice_type)
+        print(f"音声生成成功: {voice_type}")
 
     except Exception as e:
         print("音声生成エラー:", e)
         return jsonify({"reply": reply_text, "audio_url": None})
 
-    return jsonify({
-        "reply": reply_text,
-        "audio_url": f"/{audio_path}"
-    })
-
-# ---------------------------------------------------------------------
-# 起動設定（Render用）
-# ---------------------------------------------------------------------
-if __name__ == "__main__":
-    # Renderでは gunicorn が使われるが、ローカル動作確認用
-    app.run(host="0.0.0.0", port=5000)
+    return jsonif
