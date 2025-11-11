@@ -4,11 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>おはなし横丁 v2.1</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <div class="chat-container">
     <h1>🗣 おはなし横丁</h1>
+    <p class="subtitle">話しかけてみてください（音声・文字どちらでもOK）</p>
+
     <select id="characterSelect">
       <option>みさちゃん（孫娘）</option>
       <option>ゆうくん（孫息子）</option>
@@ -18,7 +20,7 @@
     <div id="messages"></div>
 
     <div class="input-area">
-      <input type="text" id="userInput" placeholder="話しかけてください…" />
+      <input type="text" id="userInput" placeholder="話したいことを入力..." />
       <button id="sendBtn">送信</button>
       <button id="micBtn">🎤</button>
     </div>
@@ -34,13 +36,13 @@
     const voicePlayer = document.getElementById("voicePlayer");
 
     // ------------------------------
-    // メッセージ送信関数
+    // メッセージ送信処理
     // ------------------------------
     async function sendMessage() {
       const text = userInput.value.trim();
       if (!text) return;
-
       const character = document.getElementById("characterSelect").value;
+
       appendMessage("🧑 あなた", text);
       userInput.value = "";
 
@@ -51,7 +53,7 @@
       });
       const data = await res.json();
 
-      appendMessage(character, "（再生中...）");
+      appendMessage(character, "（話しています...）");
       voicePlayer.src = data.audio_url;
       voicePlayer.play();
     }
@@ -59,7 +61,7 @@
     sendBtn.onclick = sendMessage;
 
     // ------------------------------
-    // 音声入力：自動送信（ボタン押さずに送る）
+    // 音声入力 → 自動送信
     // ------------------------------
     let recognition;
     if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
@@ -86,7 +88,7 @@
     }
 
     // ------------------------------
-    // 表示ヘルパー
+    // 表示補助
     // ------------------------------
     function appendMessage(sender, text) {
       const div = document.createElement("div");
