@@ -13,17 +13,20 @@ def index():
 def talk():
     data = request.json
     message = data.get("message", "")
-    character = data.get("character", "ソウタ（息子）")
 
-    # --- AIの返答生成 ---
+    # --- AIの返答（明るく元気なゆうくん） ---
     try:
         chat_response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": f"あなたは{character}として、60代の利用者にやさしく話します。"
-                               "言葉遣いは穏やかで、家族に話すように返答してください。"
+                    "content": (
+                        "あなたは明るく元気な孫息子『ゆうくん』として話します。"
+                        "60代のおじいちゃんに、笑顔で優しく語りかけてください。"
+                        "語尾は軽く跳ねる感じで、テンションは高め、"
+                        "ときどき『えへへ』『うん！』『だよ！』などを混ぜて自然に話してください。"
+                    )
                 },
                 {"role": "user", "content": message}
             ]
@@ -31,15 +34,13 @@ def talk():
         reply_text = chat_response.choices[0].message.content.strip()
     except Exception as e:
         print("Chatエラー:", e)
-        return jsonify({"reply": "ごめんね、少し調子が悪いみたい。", "audio_url": None})
+        return jsonify({
+            "reply": "ごめんね、おじいちゃん。ちょっと調子が悪いみたい。",
+            "audio_url": None
+        })
 
-    # --- ボイスモデル（日本語でも差が出る組み合わせ） ---
-    if character == "みさちゃん（孫娘）":
-        voice_type = "fable"    # 高めで女性寄りの声
-    elif character == "ゆうくん（孫息子）":
-        voice_type = "verse"    # 若い男性
-    else:
-        voice_type = "onyx"     # 低音・落ち着いた男性
+    # --- 元気な声質（fableが明るめ） ---
+    voice_type = "fable"
 
     # --- 音声生成 ---
     os.makedirs("static", exist_ok=True)
@@ -59,7 +60,10 @@ def talk():
 
     except Exception as e:
         print("音声生成エラー:", e)
-        return jsonify({"reply": reply_text, "audio_url": None})
+        return jsonify({
+            "reply": reply_text,
+            "audio_url": None
+        })
 
     return jsonify({
         "reply": reply_text,
