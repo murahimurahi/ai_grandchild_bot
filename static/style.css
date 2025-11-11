@@ -1,42 +1,88 @@
 body {
-  font-family: 'Hiragino Maru Gothic ProN', sans-serif;
-  background: #f9fafc;
+  font-family: 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+  background: linear-gradient(180deg, #fdfbfb 0%, #ebedee 100%);
   text-align: center;
   margin-top: 50px;
+  color: #333;
 }
+
 .container {
   background: white;
   display: inline-block;
-  padding: 30px;
-  border-radius: 20px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  padding: 40px 50px;
+  border-radius: 25px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  max-width: 90%;
 }
+
+h1 {
+  color: #ff8da1;
+  font-size: 2.2em;
+  margin-bottom: 10px;
+}
+
+p {
+  font-size: 1.2em;
+  line-height: 1.8;
+  margin: 8px 0;
+}
+
 textarea {
-  width: 80%;
-  height: 60px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  padding: 10px;
+  width: 85%;
+  height: 90px;
+  border-radius: 15px;
+  border: 2px solid #ddd;
+  padding: 15px;
+  font-size: 1.1em;
+  resize: none;
+  outline: none;
 }
+
 button {
-  margin: 5px;
-  padding: 8px 20px;
+  margin: 10px;
+  padding: 12px 28px;
   border: none;
-  border-radius: 10px;
+  border-radius: 15px;
   cursor: pointer;
+  font-size: 1.1em;
+  font-weight: bold;
+  transition: all 0.2s ease;
 }
+
+/* 🎙マイクボタン */
 #voiceBtn {
   background-color: #87cefa;
+  color: white;
 }
+#voiceBtn:hover {
+  background-color: #5bb8f3;
+}
+
+/* 💬話しかけるボタン */
 button[type="submit"] {
   background-color: #ffb6c1;
+  color: white;
 }
+button[type="submit"]:hover {
+  background-color: #ff91a4;
+}
+
+/* 🎧返答部分 */
 #response {
-  margin-top: 20px;
-  background: #fff8f8;
-  border-radius: 10px;
-  padding: 15px;
-  display: inline-block;
-  max-width: 80%;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  margin-top: 25px;
+  font-size: 1.3em;
+  color: #444;
+}
+
+audio {
+  margin-top: 15px;
+  width: 80%;
+}
+
+/* 📱スマホ対応 */
+@media (max-width: 600px) {
+  h1 { font-size: 1.8em; }
+  p { font-size: 1.1em; }
+  textarea { width: 95%; font-size: 1em; }
+  button { width: 90%; font-size: 1em; padding: 10px; }
 }
