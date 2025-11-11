@@ -1,89 +1,95 @@
 body {
-  font-family: "Zen Maru Gothic", sans-serif;
-  background-color: #f9fcfd;
+  font-family: "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", sans-serif;
+  text-align: center;
+  transition: background 1s ease;
   color: #333;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
   margin: 0;
+  padding: 0;
 }
+
+/* 季節テーマ */
+body.spring { background: linear-gradient(120deg, #fce4ec, #fff3e0); }
+body.summer { background: linear-gradient(120deg, #e1f5fe, #ffffff); }
+body.autumn { background: linear-gradient(120deg, #ffe0b2, #fff8e1); }
+body.winter { background: linear-gradient(120deg, #e0f7fa, #eceff1); }
 
 .container {
-  background: #fff;
-  padding: 30px 40px;
-  border-radius: 16px;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-  text-align: center;
-  max-width: 420px;
-  width: 90%;
+  max-width: 500px;
+  margin: 60px auto;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
-h1 {
-  font-size: 26px;
-  color: #444;
-  margin-bottom: 6px;
-}
-
-.subtitle {
-  color: #777;
-  margin-bottom: 18px;
-}
-
-.radio-group {
-  display: flex;
-  justify-content: space-around;
-  margin-bottom: 15px;
-}
-
-textarea {
-  width: 100%;
-  height: 80px;
-  font-size: 16px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
+#chat-box {
+  height: 320px;
+  overflow-y: auto;
   padding: 10px;
-  resize: none;
+  text-align: left;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  background: #fafafa;
 }
 
-.btns {
+.user {
+  text-align: right;
+  color: #444;
+  margin: 5px;
+}
+.ai {
+  text-align: left;
+  color: #333;
+  margin: 5px;
+}
+
+.input-area {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 15px;
+  margin-top: 10px;
 }
-
-.btn {
+.input-area input {
+  width: 70%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+.input-area button {
+  margin-left: 10px;
+  padding: 10px 20px;
   border: none;
-  border-radius: 20px;
-  padding: 8px 20px;
-  font-size: 15px;
+  border-radius: 10px;
+  background: #90caf9;
   cursor: pointer;
-  transition: 0.2s;
+  font-weight: bold;
+  transition: 0.3s;
+}
+.input-area button:hover {
+  background: #42a5f5;
+  color: white;
 }
 
-.btn.blue {
-  background: #9dd3f7;
+.buttons button {
+  margin: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #f8bbd0;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+.buttons button:hover {
+  background: #f48fb1;
+  color: white;
 }
 
-.btn.pink {
-  background: #f9b7c2;
+.reminder {
+  background: #fff9c4;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  display: inline-block;
+  font-size: 1em;
 }
-
-.btn:hover {
-  opacity: 0.8;
-}
-
-.reply {
-  margin-top: 18px;
-  background: #f3f7f9;
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 16px;
-}
-
-footer {
-  margin-top: 20px;
-  font-size: 12px;
-  color: #777;
-}
+.hidden { display: none; }
