@@ -1,73 +1,33 @@
 body {
-  font-family: "Hiragino Sans", "Noto Sans JP", sans-serif;
-  background-color: #f5f7fa;
-  margin: 0;
-  padding: 0;
-}
-
-.container {
-  max-width: 480px;
-  background: #fff;
-  margin: 3rem auto;
-  padding: 2rem;
-  border-radius: 18px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  font-family: 'Hiragino Maru Gothic ProN', sans-serif;
+  background: #f9fafc;
   text-align: center;
+  margin-top: 50px;
 }
-
-h1 {
-  color: #333;
+.container {
+  background: white;
+  display: inline-block;
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
 }
-
-.desc {
-  color: #777;
-  margin-bottom: 1rem;
-}
-
-.steps {
-  text-align: left;
-  font-size: 0.9rem;
-  color: #555;
-}
-
 textarea {
-  width: 100%;
-  height: 80px;
-  margin-top: 1rem;
-  padding: 0.6rem;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  resize: none;
-  font-size: 1rem;
+  width: 80%;
+  height: 60px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 10px;
 }
-
-.buttons {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 1rem;
-}
-
 button {
-  flex: 1;
-  margin: 0 5px;
-  padding: 0.7rem;
+  margin: 5px;
+  padding: 8px 20px;
   border: none;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 10px;
   cursor: pointer;
 }
-
-.mic {
-  background-color: #8ecae6;
-  color: #fff;
+#voiceBtn {
+  background-color: #87cefa;
 }
-
-.talk {
-  background-color: #fbb6b9;
-  color: #fff;
-}
-
-audio {
-  margin-top: 1rem;
-  width: 100%;
+button[type="submit"] {
+  background-color: #ffb6c1;
 }
