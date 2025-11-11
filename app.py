@@ -42,26 +42,25 @@ def talk():
         print("Chatエラー:", e)
         return jsonify({"reply": "ごめんね、少し調子が悪いみたい。", "audio_url": None})
 
-    # --- キャラ別音声タイプ（全員喋る構成） ---
+    # --- キャラ別音声タイプ（全員対応ボイス） ---
     if character == "みさちゃん（孫娘）":
-        voice_type = "shimmer"   # 明るく高めの女性声（sol代替）
+        voice_type = "shimmer"   # 明るい女性声
     elif character == "ゆうくん（孫息子）":
         voice_type = "verse"     # 若い男性声
     else:
         voice_type = "alloy"     # 落ち着いた男性声（息子）
 
-    # --- 音声生成（安定TTSモデル使用） ---
+    # --- 音声生成（安定モデル） ---
     os.makedirs("static", exist_ok=True)
     audio_path = "static/output.mp3"
 
     try:
         speech_response = client.audio.speech.create(
-            model="gpt-4o-mini-tts",   # ← 安定モデル
+            model="gpt-4o-mini-tts",   # 安定稼働モデル
             voice=voice_type,
             input=reply_text
         )
 
-        # openai>=1.13.3では .content に音声データが格納される
         with open(audio_path, "wb") as f:
             f.write(speech_response.content)
 
@@ -71,4 +70,14 @@ def talk():
         print("音声生成エラー:", e)
         return jsonify({"reply": reply_text, "audio_url": None})
 
-    return jsonif
+    # --- 正常レスポンス返却 ---
+    return jsonify({
+        "reply": reply_text,
+        "audio_url": f"/{audio_path}"
+    })
+
+# ---------------------------------------------------------------------
+# 起動設定（Render / ローカル両対応）
+# ---------------------------------------------------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
