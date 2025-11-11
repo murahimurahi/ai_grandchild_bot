@@ -11,13 +11,10 @@
     <p>やさしく話せる、あたたかい時間をどうぞ。</p>
 
     <form id="talkForm">
-      <label><input type="radio" name="character" value="みさちゃん（孫娘）" checked> みさちゃん（孫娘）</label>
-      <label><input type="radio" name="character" value="ゆうくん（孫息子）"> ゆうくん（孫息子）</label>
-      <label><input type="radio" name="character" value="ソウタ（息子）"> ソウタ（息子）</label>
-
+      <!-- ✅ キャラクター選択は削除 -->
       <p>① 思ったことを一言つぶやく。</p>
-      <p>② 「話しかける」または音声入力で話せます。</p>
-      <p>③ AIがすぐにやさしく返してくれます。</p>
+      <p>② 「話しかける」ボタン、または音声入力（マイクのボタン）で話せます。</p>
+      <p>③ ゆうくんがすぐにやさしく返してくれます。</p>
 
       <textarea id="message" placeholder="こんにちは"></textarea><br>
       <button type="button" id="voiceBtn">🎙 音声入力</button>
@@ -34,23 +31,23 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = document.getElementById('message').value;
-    const character = document.querySelector('input[name="character"]:checked').value;
     responseDiv.innerHTML = "考え中…";
 
     const res = await fetch('/talk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, character })
+      body: JSON.stringify({ message })
     });
+
     const data = await res.json();
 
     responseDiv.innerHTML = `
       <p>${data.reply}</p>
-      ${data.audio_url ? `<audio autoplay controls src="${data.audio_url}"></audio>` : ''}
+      ${data.audio_url ? `<audio controls src="${data.audio_url}"></audio>` : ''}
     `;
   });
 
-  // 音声入力
+  // 🎙 音声入力
   const voiceBtn = document.getElementById('voiceBtn');
   voiceBtn.addEventListener('click', () => {
     const recognition = new webkitSpeechRecognition();
