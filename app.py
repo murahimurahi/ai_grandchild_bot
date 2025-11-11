@@ -82,18 +82,19 @@ def talk():
         voice_type = "nova"    # 落ち着いた男性（息子）
 
     # -----------------------------------------------------------------
-    # 音声生成（確実に出力される最新版構文）
+    # 音声生成（確実に動作する最新版構文）
     # -----------------------------------------------------------------
     os.makedirs(BASE_DIR / "static", exist_ok=True)
     audio_path = BASE_DIR / "static" / "output.mp3"
 
     try:
-        with client.audio.speech.with_streaming_response.create(
+        speech_response = client.audio.speech.create(
             model="gpt-4o-mini-tts",
             voice=voice_type,
             input=reply_text,
-        ) as response:
-            response.stream_to_file(audio_path)
+        )
+        with open(audio_path, "wb") as f:
+            f.write(speech_response.content)
     except Exception as e:
         return jsonify({"reply": reply_text, "audio_url": None, "error": str(e)})
 
