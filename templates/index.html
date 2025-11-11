@@ -46,7 +46,7 @@
 
     responseDiv.innerHTML = `
       <p>${data.reply}</p>
-      ${data.audio_url ? `<audio controls src="${data.audio_url}"></audio>` : ''}
+      ${data.audio_url ? `<audio autoplay controls src="${data.audio_url}"></audio>` : ''}
     `;
   });
 
