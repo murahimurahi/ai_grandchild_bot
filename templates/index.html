@@ -2,37 +2,78 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>AI孫ボット</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>おはなし横丁</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="container">
-    <h1>👵🧒 AI孫ボット</h1>
-    <p>あなたが話しかけると、孫の声で返事をします。</p>
-    
-    <div class="chat">
-      <textarea id="message" placeholder="話しかけてみてください"></textarea>
-      <button id="sendBtn">話しかける</button>
+    <h1>おはなし横丁</h1>
+    <p class="subtitle">やさしく話せる、あたたかい時間をどうぞ。</p>
+
+    <div class="select-box">
+      <label><input type="radio" name="speaker" value="みさちゃん" checked> みさちゃん（孫娘）</label>
+      <label><input type="radio" name="speaker" value="ゆうくん"> ゆうくん（孫息子）</label>
+      <label><input type="radio" name="speaker" value="ソウタ"> ソウタ（息子）</label>
     </div>
 
-    <div id="replyArea"></div>
-    <audio id="voice" controls></audio>
+    <div class="howto">
+      <p>① 思ったことを一言つぶやく。</p>
+      <p>② 話しかけるを押すと、AIが返事します。</p>
+      <p>③ 音声入力でもOKです。</p>
+    </div>
+
+    <textarea id="userText" placeholder="例）今日は少し疲れたな…"></textarea>
+    <div class="btns">
+      <button id="micBtn">🎤 音声入力</button>
+      <button id="talkBtn" class="talk">話しかける</button>
+    </div>
+
+    <div id="result"></div>
+    <audio id="audio" controls hidden></audio>
   </div>
 
+  <footer>© おはなし横丁</footer>
+
   <script>
-  document.getElementById("sendBtn").onclick = async () => {
-    const msg = document.getElementById("message").value;
-    const res = await fetch("/talk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg, user_id: "demo" })
+    const talkBtn = document.getElementById("talkBtn");
+    const micBtn = document.getElementById("micBtn");
+    const userText = document.getElementById("userText");
+    const result = document.getElementById("result");
+    const audio = document.getElementById("audio");
+
+    // --- 音声入力 ---
+    micBtn.addEventListener("click", () => {
+      const rec = new webkitSpeechRecognition();
+      rec.lang = "ja-JP";
+      rec.start();
+      rec.onresult = e => {
+        userText.value = e.results[0][0].transcript;
+      };
     });
-    const data = await res.json();
-    document.getElementById("replyArea").textContent = data.reply;
-    document.getElementById("voice").src = data.audio + "?t=" + Date.now();
-    document.getElementById("voice").play();
-    document.getElementById("message").value = "";
-  };
+
+    // --- 話しかける ---
+    talkBtn.addEventListener("click", async () => {
+      const text = userText.value.trim();
+      const speaker = document.querySelector('input[name="speaker"]:checked').value;
+      if (!text) return alert("何か話しかけてくださいね。");
+
+      result.innerText = "考え中...";
+      const res = await fetch("/talk", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({text, speaker})
+      });
+      const data = await res.json();
+      if (data.reply) {
+        result.innerText = data.reply;
+        audio.src = data.audio;
+        audio.hidden = false;
+        audio.play();
+      } else {
+        result.innerText = "もう一度試してください。";
+      }
+    });
   </script>
 </body>
 </html>
