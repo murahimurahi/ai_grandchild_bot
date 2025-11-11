@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>おはなし横丁</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <div class="container">
@@ -12,15 +12,15 @@
     <p class="subtitle">やさしく話せる、あたたかい時間をどうぞ。</p>
 
     <div class="select-box">
-      <label><input type="radio" name="speaker" value="みさちゃん" checked> みさちゃん（孫娘）</label>
-      <label><input type="radio" name="speaker" value="ゆうくん"> ゆうくん（孫息子）</label>
-      <label><input type="radio" name="speaker" value="ソウタ"> ソウタ（息子）</label>
+      <label><input type="radio" name="speaker" value="みさちゃん" checked /> みさちゃん（孫娘）</label>
+      <label><input type="radio" name="speaker" value="ゆうくん" /> ゆうくん（孫息子）</label>
+      <label><input type="radio" name="speaker" value="ソウタ" /> ソウタ（息子）</label>
     </div>
 
     <div class="howto">
       <p>① 思ったことを一言つぶやく。</p>
-      <p>② 話しかけるを押すと、AIが返事します。</p>
-      <p>③ 音声入力でもOKです。</p>
+      <p>② 「話しかける」または音声入力で話せます。</p>
+      <p>③ AIがすぐにやさしく返してくれます。</p>
     </div>
 
     <textarea id="userText" placeholder="例）今日は少し疲れたな…"></textarea>
@@ -42,37 +42,47 @@
     const result = document.getElementById("result");
     const audio = document.getElementById("audio");
 
-    // --- 音声入力 ---
+    async function sendText() {
+      const text = userText.value.trim();
+      const speaker = document.querySelector('input[name="speaker"]:checked').value;
+      if (!text) return;
+
+      result.innerText = "考え中...";
+      try {
+        const res = await fetch("/talk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, speaker }),
+        });
+        const data = await res.json();
+        if (data.reply) {
+          result.innerText = data.reply;
+          audio.src = data.audio;
+          audio.hidden = false;
+          audio.play();
+        } else {
+          result.innerText = "もう一度話しかけてみてください。";
+        }
+      } catch (e) {
+        result.innerText = "接続がうまくいきませんでした。";
+      }
+    }
+
+    // 手動送信
+    talkBtn.addEventListener("click", sendText);
+
+    // 音声入力 → 自動送信
     micBtn.addEventListener("click", () => {
       const rec = new webkitSpeechRecognition();
       rec.lang = "ja-JP";
       rec.start();
-      rec.onresult = e => {
+      rec.onresult = (e) => {
         userText.value = e.results[0][0].transcript;
+        sendText(); // 入力完了後に自動送信
       };
-    });
-
-    // --- 話しかける ---
-    talkBtn.addEventListener("click", async () => {
-      const text = userText.value.trim();
-      const speaker = document.querySelector('input[name="speaker"]:checked').value;
-      if (!text) return alert("何か話しかけてくださいね。");
-
-      result.innerText = "考え中...";
-      const res = await fetch("/talk", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({text, speaker})
-      });
-      const data = await res.json();
-      if (data.reply) {
-        result.innerText = data.reply;
-        audio.src = data.audio;
-        audio.hidden = false;
-        audio.play();
-      } else {
-        result.innerText = "もう一度試してください。";
-      }
+      rec.onerror = () => {
+        result.innerText = "音声入力に失敗しました。";
+      };
     });
   </script>
 </body>
