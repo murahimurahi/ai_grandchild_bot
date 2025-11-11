@@ -1,95 +1,54 @@
 body {
-  font-family: "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", sans-serif;
-  text-align: center;
-  transition: background 1s ease;
-  color: #333;
+  font-family: "Hiragino Sans", sans-serif;
+  background: linear-gradient(180deg, #fdfcfb 0%, #e2d1c3 100%);
   margin: 0;
   padding: 0;
 }
 
-/* 季節テーマ */
-body.spring { background: linear-gradient(120deg, #fce4ec, #fff3e0); }
-body.summer { background: linear-gradient(120deg, #e1f5fe, #ffffff); }
-body.autumn { background: linear-gradient(120deg, #ffe0b2, #fff8e1); }
-body.winter { background: linear-gradient(120deg, #e0f7fa, #eceff1); }
-
-.container {
+.chat-container {
   max-width: 500px;
-  margin: 60px auto;
+  margin: 2rem auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   padding: 20px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
-#chat-box {
-  height: 320px;
+#messages {
+  height: 300px;
   overflow-y: auto;
-  padding: 10px;
-  text-align: left;
   border: 1px solid #ddd;
-  border-radius: 10px;
-  margin-bottom: 10px;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 1rem;
   background: #fafafa;
 }
 
-.user {
-  text-align: right;
-  color: #444;
-  margin: 5px;
-}
-.ai {
-  text-align: left;
-  color: #333;
-  margin: 5px;
+.message {
+  margin: 8px 0;
 }
 
 .input-area {
   display: flex;
-  justify-content: center;
-  margin-top: 10px;
+  gap: 5px;
 }
-.input-area input {
-  width: 70%;
-  padding: 10px;
-  border-radius: 10px;
+
+#userInput {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
   border: 1px solid #ccc;
 }
-.input-area button {
-  margin-left: 10px;
-  padding: 10px 20px;
+
+button {
+  padding: 8px 12px;
   border: none;
-  border-radius: 10px;
-  background: #90caf9;
+  border-radius: 6px;
+  background-color: #f2b5d4;
+  color: #333;
   cursor: pointer;
-  font-weight: bold;
-  transition: 0.3s;
-}
-.input-area button:hover {
-  background: #42a5f5;
-  color: white;
 }
 
-.buttons button {
-  margin: 5px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: #f8bbd0;
-  border: none;
-  cursor: pointer;
-  font-size: 0.9em;
+button:hover {
+  background-color: #f8d1e3;
 }
-.buttons button:hover {
-  background: #f48fb1;
-  color: white;
-}
-
-.reminder {
-  background: #fff9c4;
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 10px;
-  display: inline-block;
-  font-size: 1em;
-}
-.hidden { display: none; }
