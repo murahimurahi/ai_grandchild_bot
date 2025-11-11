@@ -3,99 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>おはなし横丁 v2.1</title>
+  <title>おはなし横丁</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="chat-container">
-    <h1>🗣 おはなし横丁</h1>
-    <p class="subtitle">話しかけてみてください（音声・文字どちらでもOK）</p>
+  <main class="container">
+    <h1>おはなし横丁</h1>
+    <p class="desc">やさしく話せる、あたたかい時間をどうぞ。</p>
 
-    <select id="characterSelect">
-      <option>みさちゃん（孫娘）</option>
-      <option>ゆうくん（孫息子）</option>
-      <option>お父さん</option>
-    </select>
+    <form id="characterForm">
+      <label><input type="radio" name="character" value="みさちゃん（孫娘）" checked> みさちゃん（孫娘）</label>
+      <label><input type="radio" name="character" value="ゆうくん（孫息子）"> ゆうくん（孫息子）</label>
+      <label><input type="radio" name="character" value="ソウタ（息子）"> ソウタ（息子）</label>
+    </form>
 
-    <div id="messages"></div>
+    <ol class="steps">
+      <li>思ったことを一言つぶやく。</li>
+      <li>「話しかける」または音声入力で話します。</li>
+      <li>AIがすぐにやさしく返してくれます。</li>
+    </ol>
 
-    <div class="input-area">
-      <input type="text" id="userInput" placeholder="話したいことを入力..." />
-      <button id="sendBtn">送信</button>
-      <button id="micBtn">🎤</button>
+    <textarea id="userInput" placeholder="こんにちは など…"></textarea>
+
+    <div class="buttons">
+      <button id="micBtn" class="mic">🎙 音声入力</button>
+      <button id="sendBtn" class="talk">話しかける</button>
     </div>
 
-    <audio id="voicePlayer" controls></audio>
-  </div>
+    <div id="responseBox">
+      <p id="responseText"></p>
+      <audio id="voicePlayer" controls></audio>
+    </div>
+  </main>
 
   <script>
     const userInput = document.getElementById("userInput");
+    const responseText = document.getElementById("responseText");
+    const voicePlayer = document.getElementById("voicePlayer");
     const sendBtn = document.getElementById("sendBtn");
     const micBtn = document.getElementById("micBtn");
-    const messages = document.getElementById("messages");
-    const voicePlayer = document.getElementById("voicePlayer");
 
-    // ------------------------------
-    // メッセージ送信処理
-    // ------------------------------
-    async function sendMessage() {
+    // テキスト送信
+    sendBtn.onclick = async () => {
       const text = userInput.value.trim();
       if (!text) return;
-      const character = document.getElementById("characterSelect").value;
-
-      appendMessage("🧑 あなた", text);
-      userInput.value = "";
-
+      const character = document.querySelector('input[name="character"]:checked').value;
       const res = await fetch("/speak", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, character })
       });
       const data = await res.json();
+      if (data.message) responseText.textContent = data.message;
+      if (data.audio_url) {
+        voicePlayer.src = data.audio_url;
+        voicePlayer.play();
+      }
+    };
 
-      appendMessage(character, "（話しています...）");
-      voicePlayer.src = data.audio_url;
-      voicePlayer.play();
-    }
-
-    sendBtn.onclick = sendMessage;
-
-    // ------------------------------
-    // 音声入力 → 自動送信
-    // ------------------------------
-    let recognition;
+    // 音声入力
     if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
-      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "ja-JP";
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
+      recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
         userInput.value = transcript;
-        sendMessage(); // 🎯 自動送信
       };
-
-      recognition.onend = () => {
-        micBtn.disabled = false;
-      };
-
-      micBtn.onclick = () => {
-        recognition.start();
-        micBtn.disabled = true;
-      };
+      micBtn.onclick = () => recognition.start();
     } else {
       micBtn.disabled = true;
-      micBtn.textContent = "🎙️非対応";
-    }
-
-    // ------------------------------
-    // 表示補助
-    // ------------------------------
-    function appendMessage(sender, text) {
-      const div = document.createElement("div");
-      div.className = "message";
-      div.innerHTML = `<strong>${sender}：</strong> ${text}`;
-      messages.appendChild(div);
-      messages.scrollTop = messages.scrollHeight;
+      micBtn.textContent = "🎙 音声非対応";
     }
   </script>
 </body>
