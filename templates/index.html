@@ -1,80 +1,100 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>おはなし横丁</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>おはなし横丁 v2.1</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body class="{{ season }}">
-  <div class="container">
-    <h1>おはなし横丁</h1>
-    <p class="desc">気軽に話して、心を整える場所です。</p>
+<body>
+  <div class="chat-container">
+    <h1>🗣 おはなし横丁</h1>
+    <select id="characterSelect">
+      <option>みさちゃん（孫娘）</option>
+      <option>ゆうくん（孫息子）</option>
+      <option>お父さん</option>
+    </select>
 
-    <div id="reminder" class="reminder hidden">👋 こんにちは、今日も少しお話ししましょうか？</div>
-
-    <div id="chat-box"></div>
+    <div id="messages"></div>
 
     <div class="input-area">
-      <input type="text" id="userInput" placeholder="今日はどんな一日でしたか？">
-      <button id="sendBtn">話す</button>
+      <input type="text" id="userInput" placeholder="話しかけてください…" />
+      <button id="sendBtn">送信</button>
+      <button id="micBtn">🎤</button>
     </div>
 
-    <div class="buttons">
-      <button id="fontPlus">文字＋</button>
-      <button id="fontMinus">文字−</button>
-    </div>
+    <audio id="voicePlayer" controls></audio>
   </div>
 
   <script>
-    const chatBox = document.getElementById("chat-box");
-    const input = document.getElementById("userInput");
+    const userInput = document.getElementById("userInput");
     const sendBtn = document.getElementById("sendBtn");
+    const micBtn = document.getElementById("micBtn");
+    const messages = document.getElementById("messages");
+    const voicePlayer = document.getElementById("voicePlayer");
 
-    function appendMessage(role, text) {
-      const div = document.createElement("div");
-      div.className = role;
-      div.textContent = text;
-      chatBox.appendChild(div);
-      chatBox.scrollTop = chatBox.scrollHeight;
+    // ------------------------------
+    // メッセージ送信関数
+    // ------------------------------
+    async function sendMessage() {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      const character = document.getElementById("characterSelect").value;
+      appendMessage("🧑 あなた", text);
+      userInput.value = "";
+
+      const res = await fetch("/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, character })
+      });
+      const data = await res.json();
+
+      appendMessage(character, "（再生中...）");
+      voicePlayer.src = data.audio_url;
+      voicePlayer.play();
     }
 
-    sendBtn.addEventListener("click", () => {
-      const message = input.value.trim();
-      if (!message) return;
-      appendMessage("user", "👤 " + message);
-      input.value = "";
+    sendBtn.onclick = sendMessage;
 
-      fetch("/talk", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message})
-      })
-      .then(res => res.json())
-      .then(data => {
-        appendMessage("ai", "🤖 " + data.mood);
-        appendMessage("ai", "💬 " + data.reply);
-      });
-    });
+    // ------------------------------
+    // 音声入力：自動送信（ボタン押さずに送る）
+    // ------------------------------
+    let recognition;
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = "ja-JP";
 
-    // エンターキー対応
-    input.addEventListener("keypress", e => {
-      if (e.key === "Enter") sendBtn.click();
-    });
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+        sendMessage(); // 🎯 自動送信
+      };
 
-    // フォントサイズ調整
-    const fontPlus = document.getElementById("fontPlus");
-    const fontMinus = document.getElementById("fontMinus");
-    let size = 16;
-    fontPlus.onclick = () => { size += 2; chatBox.style.fontSize = size + "px"; };
-    fontMinus.onclick = () => { size = Math.max(12, size - 2); chatBox.style.fontSize = size + "px"; };
+      recognition.onend = () => {
+        micBtn.disabled = false;
+      };
 
-    // 今日も話そう通知
-    window.addEventListener("load", () => {
-      setTimeout(() => {
-        document.getElementById("reminder").classList.remove("hidden");
-      }, 2000);
-    });
+      micBtn.onclick = () => {
+        recognition.start();
+        micBtn.disabled = true;
+      };
+    } else {
+      micBtn.disabled = true;
+      micBtn.textContent = "🎙️非対応";
+    }
+
+    // ------------------------------
+    // 表示ヘルパー
+    // ------------------------------
+    function appendMessage(sender, text) {
+      const div = document.createElement("div");
+      div.className = "message";
+      div.innerHTML = `<strong>${sender}：</strong> ${text}`;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
   </script>
 </body>
 </html>
