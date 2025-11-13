@@ -11,9 +11,9 @@ app = Flask(__name__)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------
-# 会話ログ保存フォルダ
+# 保存フォルダ（Render対応）
 # ------------------------
-LOG_DIR = "data/logs"
+LOG_DIR = "static/logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs("static/audio", exist_ok=True)
 
@@ -39,7 +39,6 @@ def save_conversation(user_msg, ai_reply, audio_file):
         "audio_file": audio_file
     })
 
-    # 保存
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
@@ -53,7 +52,7 @@ def index():
 
 
 # ------------------------
-# 会話処理（ゆうくん）
+# 会話（ゆうくん）
 # ------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
@@ -67,9 +66,11 @@ def talk():
             {
                 "role": "system",
                 "content": (
-                    "あなたは明るく優しい孫のゆうくんです。"
-                    "祖父母に対して自然に会話し、"
-                    "語尾に『だよ』『ね！』などを付けすぎず、穏やかに話します。"
+                    "あなたは10歳前後の明るく優しい孫『ゆうくん』です。"
+                    "話し相手は祖父母のような存在ですが、"
+                    "『おじいちゃん』『おばあちゃん』とは呼ばず、"
+                    "自然に優しく、家族に話すような口調で話してください。"
+                    "言葉は短く、親しみを込めて話します。"
                 )
             },
             {"role": "user", "content": message}
@@ -80,11 +81,11 @@ def talk():
     # --- 音声生成 ---
     speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
-        voice="fable",  # やや高めの自然な男性ボイス
+        voice="fable",  # 明るく自然な少年声
         input=reply_text
     )
 
-    # --- 音声ファイル保存 ---
+    # --- 音声保存 ---
     audio_filename = f"{datetime.datetime.now().strftime('%H%M%S')}.mp3"
     audio_path = f"static/audio/{audio_filename}"
     with open(audio_path, "wb") as f:
@@ -93,7 +94,7 @@ def talk():
     # --- 会話を保存 ---
     save_conversation(message, reply_text, audio_filename)
 
-    # --- 返却 ---
+    # --- 応答返却 ---
     return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
 
 
@@ -109,7 +110,6 @@ def logs():
             with open(os.path.join(LOG_DIR, file), "r", encoding="utf-8") as f:
                 entries = json.load(f)
             logs_data.append({"date": date, "entries": entries})
-
     logs_data.sort(key=lambda x: x["date"], reverse=True)
     return render_template("logs.html", logs=logs_data)
 
