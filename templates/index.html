@@ -19,17 +19,22 @@
 
       <div class="mic-controls">
         <button type="button" id="voiceBtn" class="mic-btn">🎙 マイク</button>
-        <label class="mode-switch">
-          <input type="checkbox" id="longMode">
-          <span class="slider"></span>
-          <span class="mode-label">短文</span>
-        </label>
+
+        <div class="mode-box">
+          <label class="mode-switch">
+            <input type="checkbox" id="longMode">
+            <span class="slider"></span>
+            <span class="mode-label">短文</span>
+          </label>
+          <small class="mode-hint">（長く話したい時は切り替えてね）</small>
+        </div>
       </div>
 
       <button type="submit">話しかける</button>
     </form>
 
     <div id="response"></div>
+    <div id="subtitle" class="subtitle"></div>
 
     <p class="loglink"><a href="/logs">📆 過去の会話カレンダーを見る</a></p>
   </div>
@@ -40,6 +45,7 @@
   const micBtn = document.getElementById('voiceBtn');
   const modeSwitch = document.getElementById('longMode');
   const modeLabel = document.querySelector('.mode-label');
+  const subtitleDiv = document.getElementById('subtitle');
 
   // 🔁 モード表示切り替え
   modeSwitch.addEventListener('change', () => {
@@ -52,6 +58,7 @@
     const message = document.getElementById('message').value;
     if (!message.trim()) return;
     responseDiv.innerHTML = "考え中…";
+    subtitleDiv.textContent = "";
 
     const res = await fetch('/talk', {
       method: 'POST',
@@ -71,7 +78,7 @@
     }
   });
 
-  // 🎙 音声認識改良＋マイクアニメーション
+  // 🎙 音声認識＋リアルタイム字幕
   let recognition;
   micBtn.addEventListener('click', () => {
     if (recognition) recognition.stop();
@@ -84,11 +91,10 @@
 
     document.getElementById('message').value = "";
     recognition.start();
-
-    // 🔆 マイク点滅ON
     micBtn.classList.add('recording');
+    subtitleDiv.textContent = "🎤 話してください…";
 
-    const limit = modeSwitch.checked ? 60000 : 15000; // 長文=1分, 短文=15秒
+    const limit = modeSwitch.checked ? 60000 : 15000; // 長文1分 / 短文15秒
     const stopTimer = setTimeout(() => recognition.stop(), limit);
 
     recognition.onresult = (e) => {
@@ -97,17 +103,20 @@
         transcript += e.results[i][0].transcript;
       }
       document.getElementById('message').value = transcript;
+      subtitleDiv.textContent = transcript;
     };
 
     recognition.onend = () => {
       clearTimeout(stopTimer);
-      micBtn.classList.remove('recording'); // 🔆消灯
+      micBtn.classList.remove('recording');
+      subtitleDiv.textContent = "";
       const text = document.getElementById('message').value.trim();
       if (text) form.requestSubmit();
     };
 
     recognition.onerror = (e) => {
       micBtn.classList.remove('recording');
+      subtitleDiv.textContent = "⚠️ 音声認識に失敗しました。";
       console.log("音声認識エラー:", e.error);
     };
   });
