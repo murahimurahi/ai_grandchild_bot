@@ -5,7 +5,7 @@
   <title>おはなし横丁</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body class="{{ season }}">
   <div class="container">
     <h1>おはなし横丁</h1>
     <p>やさしく話せる、あたたかい時間をどうぞ。</p>
@@ -51,7 +51,7 @@
     }
   });
 
-  // 🎙 音声入力（マイク）
+  // 🎙 音声入力
   const voiceBtn = document.getElementById('voiceBtn');
   voiceBtn.addEventListener('click', () => {
     const recognition = new webkitSpeechRecognition();
@@ -62,6 +62,24 @@
       form.requestSubmit();
     };
   });
+
+  // 🕊 「今日も話そう」通知（朝9時）
+  if ('Notification' in window) {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        const now = new Date();
+        const nineAM = new Date();
+        nineAM.setHours(9, 0, 0, 0);
+        const delay = nineAM - now > 0 ? nineAM - now : nineAM.getTime() + 86400000 - now.getTime();
+        setTimeout(() => {
+          new Notification("ゆうくんからのメッセージ", {
+            body: "おはよう！今日も少しだけ話そうか？😊",
+            icon: "/static/icon.png"
+          });
+        }, delay);
+      }
+    });
+  }
   </script>
 </body>
 </html>
