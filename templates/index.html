@@ -17,7 +17,7 @@
 
       <textarea id="message" placeholder="こんにちは"></textarea><br>
       <button type="button" id="voiceBtn">🎙 マイク</button>
-      <button type="submit" id="sendBtn">話しかける</button>
+      <button type="submit">話しかける</button>
     </form>
 
     <div id="response"></div>
@@ -26,63 +26,41 @@
   <script>
   const form = document.getElementById('talkForm');
   const responseDiv = document.getElementById('response');
-  const voiceBtn = document.getElementById('voiceBtn');
 
-  // 🚀 会話送信処理
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const message = document.getElementById('message').value.trim();
-    if (!message) return;
-
+    const message = document.getElementById('message').value;
     responseDiv.innerHTML = "考え中…";
 
-    try {
-      const res = await fetch('/talk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
+    const res = await fetch('/talk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message })
+    });
+
+    const data = await res.json();
+    responseDiv.innerHTML = `<p>${data.reply}</p>`;
+
+    if (data.audio_url) {
+      const audio = new Audio(data.audio_url);
+      audio.play().catch(err => {
+        console.log("自動再生ブロック:", err);
+        responseDiv.innerHTML += `<p>▶️ 再生ボタンを押して聞いてね。</p>
+        <audio controls src="${data.audio_url}"></audio>`;
       });
-      const data = await res.json();
-
-      responseDiv.innerHTML = `<p>${data.reply}</p>`;
-
-      // 🎧 自動で音声を再生（ボタン不要）
-      if (data.audio_url) {
-        const audio = new Audio(data.audio_url);
-        audio.autoplay = true;
-        audio.play().then(() => {
-          console.log("🎵 自動再生成功");
-        }).catch(err => {
-          console.warn("⚠️ 自動再生がブロックされた場合:", err);
-          // 代替: 再生ボタンを表示
-          responseDiv.innerHTML += `
-            <p>▶️ 音声の再生がブロックされました。下のボタンを押してください。</p>
-            <audio controls src="${data.audio_url}" autoplay></audio>
-          `;
-        });
-      }
-    } catch (err) {
-      responseDiv.innerHTML = "通信エラーが発生しました。";
-      console.error(err);
     }
   });
 
-  // 🎙 音声入力（Chrome対応）
+  // 🎙 音声入力（マイク）
+  const voiceBtn = document.getElementById('voiceBtn');
   voiceBtn.addEventListener('click', () => {
-    try {
-      const recognition = new webkitSpeechRecognition();
-      recognition.lang = "ja-JP";
-      recognition.start();
-      recognition.onresult = (e) => {
-        document.getElementById('message').value = e.results[0][0].transcript;
-        form.requestSubmit(); // 自動送信
-      };
-      recognition.onerror = () => {
-        alert("マイクが使用できません。設定を確認してください。");
-      };
-    } catch (err) {
-      alert("お使いのブラウザは音声入力に対応していません。");
-    }
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = "ja-JP";
+    recognition.start();
+    recognition.onresult = (e) => {
+      document.getElementById('message').value = e.results[0][0].transcript;
+      form.requestSubmit();
+    };
   });
   </script>
 </body>
