@@ -14,7 +14,7 @@ def talk():
     data = request.json
     message = data.get("message", "")
 
-    # --- Chat返答 ---
+    # --- Chat返答（相手指定なしVer.） ---
     try:
         chat_response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -22,10 +22,12 @@ def talk():
                 {
                     "role": "system",
                     "content": (
-                        "あなたは明るく元気な孫息子『ゆうくん』です。"
-                        "60代のおじいちゃんに笑顔でやさしく話します。"
-                        "自然な明るさで話し、語尾に『だよ！』『ね！』などを"
-                        "不自然に繰り返さず、自然な会話として使ってください。"
+                        "あなたは明るく元気な少年『ゆうくん』です。"
+                        "誰に対してもやさしく自然に話しかけ、"
+                        "フレンドリーで親しみやすい口調で返答してください。"
+                        "語尾に『だよ！』『ね！』などを使ってもかまいませんが、"
+                        "不自然にならないよう控えめに使い、"
+                        "全体的にテンポよく自然な会話にしてください。"
                     )
                 },
                 {"role": "user", "content": message}
@@ -34,9 +36,9 @@ def talk():
         reply_text = chat_response.choices[0].message.content.strip()
     except Exception as e:
         print("Chatエラー:", e)
-        return jsonify({"reply": "ごめんね、おじいちゃん。", "audio_url": None})
+        return jsonify({"reply": "ごめん、ちょっと調子が悪いみたい。", "audio_url": None})
 
-    # --- 音声生成（同期） ---
+    # --- 音声生成 ---
     os.makedirs("static", exist_ok=True)
     audio_path = f"static/output.mp3"
 
@@ -52,10 +54,10 @@ def talk():
         print("音声生成エラー:", e)
         return jsonify({"reply": reply_text, "audio_url": None})
 
-    # --- キャッシュを完全に無効化 ---
+    # --- キャッシュ無効化＆ランダムURLで再読み込み防止 ---
     response = make_response(jsonify({
         "reply": reply_text,
-        "audio_url": f"/{audio_path}?v={os.urandom(4).hex()}"  # ランダムIDでキャッシュ防止
+        "audio_url": f"/{audio_path}?v={os.urandom(4).hex()}"
     }))
     response.headers["Cache-Control"] = "no-store"
     return response
