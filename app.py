@@ -1,6 +1,7 @@
 import os
 import json
 import datetime
+import threading
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 from google.oauth2 import service_account
@@ -21,12 +22,10 @@ credentials = service_account.Credentials.from_service_account_file(
     SERVICE_ACCOUNT_FILE, scopes=SCOPES
 )
 drive_service = build("drive", "v3", credentials=credentials)
-
 FOLDER_NAME = "おはなし横丁ログ"
 
-
 # ---------------------------------------------------------------------
-# Google Driveのフォルダ確認・作成
+# Driveフォルダ取得または作成
 # ---------------------------------------------------------------------
 def get_or_create_folder():
     query = f"name='{FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder'"
@@ -38,32 +37,33 @@ def get_or_create_folder():
     folder = drive_service.files().create(body=folder_metadata, fields="id").execute()
     return folder["id"]
 
+FOLDER_ID = get_or_create_folder()
 
 # ---------------------------------------------------------------------
-# 会話ログ保存
+# Drive保存（別スレッドで非同期実行）
 # ---------------------------------------------------------------------
-def save_conversation(message, reply, audio_file):
-    folder_id = get_or_create_folder()
-    today = datetime.date.today().strftime("%Y-%m-%d")
+def save_to_drive_async(message, reply_text):
+    try:
+        today = datetime.date.today().strftime("%Y-%m-%d")
+        log_data = {
+            "date": today,
+            "user_message": message,
+            "reply": reply_text,
+        }
+        filename = f"{today}.json"
+        local_path = os.path.join("/tmp", filename)
 
-    log_data = {
-        "date": today,
-        "user_message": message,
-        "reply": reply,
-    }
+        with open(local_path, "w", encoding="utf-8") as f:
+            json.dump(log_data, f, ensure_ascii=False, indent=2)
 
-    filename = f"{today}.json"
-    local_path = os.path.join("/tmp", filename)
-    with open(local_path, "w", encoding="utf-8") as f:
-        json.dump(log_data, f, ensure_ascii=False, indent=2)
-
-    media = MediaFileUpload(local_path, mimetype="application/json")
-    drive_service.files().create(
-        body={"name": filename, "parents": [folder_id]},
-        media_body=media,
-        fields="id"
-    ).execute()
-
+        media = MediaFileUpload(local_path, mimetype="application/json")
+        drive_service.files().create(
+            body={"name": filename, "parents": [FOLDER_ID]},
+            media_body=media,
+            fields="id"
+        ).execute()
+    except Exception as e:
+        print("⚠️ Drive保存エラー:", e)
 
 # ---------------------------------------------------------------------
 # トップページ
@@ -72,62 +72,55 @@ def save_conversation(message, reply, audio_file):
 def index():
     return render_template("index.html")
 
-
 # ---------------------------------------------------------------------
-# 会話処理
+# 会話処理（高速・同期音声対応）
 # ---------------------------------------------------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
     message = data.get("message", "")
-    mode = data.get("mode", "short")
 
-    # -------------------------------
-    # ChatGPT応答生成
-    # -------------------------------
+    # --- ChatGPT 応答（短く自然に） ---
     response = client.chat.completions.create(
         model="gpt-4o-mini",
+        temperature=0.8,
         messages=[
             {
                 "role": "system",
                 "content": (
-                    "あなたは優しい小学生の『ゆうくん』です。"
-                    "相手は大人の家族です。"
-                    "敬意を持ちつつ、自然な言葉で、優しく明るく返答してください。"
-                    "決して『おじいちゃん』『おばあちゃん』などの呼び方を使わないでください。"
-                    "会話はシンプルで親しみやすく、思いやりを持ったトーンにしてください。"
+                    "あなたは小学5年生の『ゆうくん』です。"
+                    "相手は大人の家族ですが、"
+                    "『おじいちゃん』『おばあちゃん』などの呼称は使いません。"
+                    "自然で優しく、思いやりのある話し方で、"
+                    "一文ずつ短く返答してください。"
+                    "絵文字や記号は使わず、口調は穏やかで明るく。"
                 )
             },
             {"role": "user", "content": message}
         ],
-        max_tokens=200 if mode == "short" else 600,
+        max_tokens=150,
     )
 
     reply_text = response.choices[0].message.content.strip()
 
-    # -------------------------------
-    # 音声生成（返答のみ）
-    # -------------------------------
+    # --- 音声生成（同期実行・完全一致） ---
     speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
-        voice="alloy",  # 声は自然な少年っぽい
+        voice="fable",  # 少年寄りの自然な声
         input=reply_text
     )
 
     audio_path = "static/output.mp3"
     with open(audio_path, "wb") as f:
-        f.write(speech.read())
+        for chunk in speech.iter_bytes():  # ストリーミング書き込みで即応答
+            f.write(chunk)
+            f.flush()
 
-    # -------------------------------
-    # Google Drive保存（失敗しても続行）
-    # -------------------------------
-    try:
-        save_conversation(message, reply_text, audio_path)
-    except Exception as e:
-        print("⚠️ Drive保存エラー:", e)
+    # --- Drive保存を別スレッドで実行（返答をブロックしない） ---
+    threading.Thread(target=save_to_drive_async, args=(message, reply_text)).start()
 
+    # --- 即レスポンス ---
     return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
-
 
 # ---------------------------------------------------------------------
 # ログページ
@@ -136,7 +129,6 @@ def talk():
 def logs():
     today = datetime.date.today().strftime("%Y-%m-%d")
     return render_template("logs.html", today=today)
-
 
 # ---------------------------------------------------------------------
 # 実行
