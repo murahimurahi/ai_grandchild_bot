@@ -5,8 +5,8 @@ from openai import OpenAI
 app = Flask(__name__)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# 永続保存フォルダ
-LOG_DIR = "/var/data/logs"
+# Starterプラン対応：data/logs に保存
+LOG_DIR = os.path.join(os.path.dirname(__file__), "data/logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # -------------------------------
@@ -52,6 +52,7 @@ def talk():
         print("Chatエラー:", e)
         return jsonify({"reply": "ごめん、ちょっと考えごとしちゃってたみたい。", "audio_url": None})
 
+    # フォルダ作成
     today = datetime.date.today().strftime("%Y-%m-%d")
     day_dir = os.path.join(LOG_DIR, today)
     os.makedirs(day_dir, exist_ok=True)
@@ -101,9 +102,10 @@ def talk():
 # -------------------------------
 @app.route("/logs")
 def view_logs():
+    if not os.path.exists(LOG_DIR):
+        return render_template("logs.html", logs=[])
     days = sorted(os.listdir(LOG_DIR))
     all_logs = []
-
     for day in days:
         log_file = os.path.join(LOG_DIR, day, "log.json")
         if os.path.exists(log_file):
