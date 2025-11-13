@@ -17,7 +17,7 @@
 
       <textarea id="message" placeholder="こんにちは"></textarea><br>
       <button type="button" id="voiceBtn">🎙 マイク</button>
-      <button type="submit">話しかける</button>
+      <button type="submit" id="sendBtn">話しかける</button>
     </form>
 
     <div id="response"></div>
@@ -26,43 +26,58 @@
   <script>
   const form = document.getElementById('talkForm');
   const responseDiv = document.getElementById('response');
+  const voiceBtn = document.getElementById('voiceBtn');
 
+  // 🚀 会話送信処理
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const message = document.getElementById('message').value;
+    const message = document.getElementById('message').value.trim();
+    if (!message) return;
+
     responseDiv.innerHTML = "考え中…";
 
-    const res = await fetch('/talk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
-    });
-
-    const data = await res.json();
-
-    // 🎧 返答テキストと音声をセット
-    responseDiv.innerHTML = `<p>${data.reply}</p>`;
-
-    if (data.audio_url) {
-      const audio = new Audio(data.audio_url);
-      audio.play().catch(err => {
-        console.log("自動再生がブロックされた場合:", err);
-        responseDiv.innerHTML += `<p>▶️ 再生ボタンを押して聞いてね。</p>
-        <audio controls src="${data.audio_url}"></audio>`;
+    try {
+      const res = await fetch('/talk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
       });
+      const data = await res.json();
+
+      responseDiv.innerHTML = `<p>${data.reply}</p>`;
+
+      // 🎧 自動音声再生（ブロックされた場合は代替）
+      if (data.audio_url) {
+        const audio = new Audio(data.audio_url);
+        audio.play().catch(() => {
+          responseDiv.innerHTML += `
+            <p>▶️ 再生ボタンを押して聞いてね。</p>
+            <audio controls src="${data.audio_url}"></audio>
+          `;
+        });
+      }
+    } catch (err) {
+      responseDiv.innerHTML = "通信エラーが発生しました。";
+      console.error(err);
     }
   });
 
-  // 🎙 音声入力
-  const voiceBtn = document.getElementById('voiceBtn');
+  // 🎙 音声入力（Chrome対応）
   voiceBtn.addEventListener('click', () => {
-    const recognition = new webkitSpeechRecognition();
-    recognition.lang = "ja-JP";
-    recognition.start();
-    recognition.onresult = (e) => {
-      document.getElementById('message').value = e.results[0][0].transcript;
-      form.requestSubmit();
-    };
+    try {
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "ja-JP";
+      recognition.start();
+      recognition.onresult = (e) => {
+        document.getElementById('message').value = e.results[0][0].transcript;
+        form.requestSubmit(); // 自動送信
+      };
+      recognition.onerror = () => {
+        alert("マイクが使用できません。設定を確認してください。");
+      };
+    } catch (err) {
+      alert("お使いのブラウザは音声入力に対応していません。");
+    }
   });
   </script>
 </body>
