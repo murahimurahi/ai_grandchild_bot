@@ -21,6 +21,8 @@
     </form>
 
     <div id="response"></div>
+
+    <p class="loglink"><a href="/logs">📜 過去の会話ログを見る</a></p>
   </div>
 
   <script>
@@ -30,6 +32,7 @@
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = document.getElementById('message').value;
+    if (!message.trim()) return;
     responseDiv.innerHTML = "考え中…";
 
     const res = await fetch('/talk', {
@@ -63,7 +66,7 @@
     };
   });
 
-  // 🕊 「今日も話そう」通知（朝9時）
+  // 🕊 通知（朝9時）
   if ('Notification' in window) {
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
