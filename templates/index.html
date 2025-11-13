@@ -46,13 +46,18 @@
 
       responseDiv.innerHTML = `<p>${data.reply}</p>`;
 
-      // 🎧 自動音声再生（ブロックされた場合は代替）
+      // 🎧 自動で音声を再生（ボタン不要）
       if (data.audio_url) {
         const audio = new Audio(data.audio_url);
-        audio.play().catch(() => {
+        audio.autoplay = true;
+        audio.play().then(() => {
+          console.log("🎵 自動再生成功");
+        }).catch(err => {
+          console.warn("⚠️ 自動再生がブロックされた場合:", err);
+          // 代替: 再生ボタンを表示
           responseDiv.innerHTML += `
-            <p>▶️ 再生ボタンを押して聞いてね。</p>
-            <audio controls src="${data.audio_url}"></audio>
+            <p>▶️ 音声の再生がブロックされました。下のボタンを押してください。</p>
+            <audio controls src="${data.audio_url}" autoplay></audio>
           `;
         });
       }
