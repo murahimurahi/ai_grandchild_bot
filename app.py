@@ -1,26 +1,35 @@
-import os
+import os, threading
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 
 app = Flask(__name__)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# ------------------------
-# ルート
-# ------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
-# ------------------------
-# 会話処理
-# ------------------------
+def generate_speech_async(text):
+    """音声生成を別スレッドで実行"""
+    try:
+        speech = client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice="nova",
+            input=text
+        )
+        os.makedirs("static", exist_ok=True)
+        audio_path = "static/output.mp3"
+        with open(audio_path, "wb") as f:
+            f.write(speech.read())
+    except Exception as e:
+        print("音声生成エラー:", e)
+
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
     message = data.get("message", "")
 
-    # --- AIの返答を生成 ---
+    # --- AI応答生成 ---
     chat_response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -39,23 +48,13 @@ def talk():
             {"role": "user", "content": message}
         ]
     )
+
     reply_text = chat_response.choices[0].message.content.strip()
 
-    # --- 音声生成（明るく自然な声で） ---
-    speech = client.audio.speech.create(
-        model="gpt-4o-mini-tts",
-        voice="nova",  # 現状一番自然で安定している男性少年系トーン
-        input=f"明るく元気に、優しく語尾を伸ばして話してください。{reply_text}"
-    )
+    # --- 音声は別スレッドで生成 ---
+    threading.Thread(target=generate_speech_async, args=(reply_text,)).start()
 
-    # --- 音声を保存 ---
-    audio_path = "static/output.mp3"
-    os.makedirs("static", exist_ok=True)
-    with open(audio_path, "wb") as f:
-        f.write(speech.read())
-
-    return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
-
+    return jsonify({"reply": reply_text, "audio_url": "/static/output.mp3"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
