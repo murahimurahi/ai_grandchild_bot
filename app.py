@@ -1,4 +1,4 @@
-import os, json, requests, datetime, logging, io
+import os, json, requests, datetime, logging, io, re
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 from google.oauth2 import service_account
@@ -8,9 +8,9 @@ from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# -----------------------------
-# 環境変数（Renderで設定）
-# -----------------------------
+# ---------------------------------
+# Render の環境変数
+# ---------------------------------
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY")
@@ -19,9 +19,9 @@ GOOGLE_APPLICATION_CREDENTIALS = "/etc/secrets/service_account.json"
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-# -----------------------------
-# Google Driveへ会話ログ保存
-# -----------------------------
+# ---------------------------------
+# Google Drive ログ保存（完全版）
+# ---------------------------------
 def save_to_drive_log(user_text, reply_text):
     try:
         creds = service_account.Credentials.from_service_account_file(
@@ -33,15 +33,21 @@ def save_to_drive_log(user_text, reply_text):
         today = datetime.date.today().strftime("%Y-%m-%d")
         filename = f"conversation_{today}.txt"
 
-        query = f"name='{filename}' and mimeType='text/plain'"
-        results = service.files().list(q=query, spaces="drive", fields="files(id)").execute()
+        # ファイル検索
+        results = service.files().list(
+            q=f"name='{filename}' and mimeType='text/plain'",
+            spaces="drive",
+            fields="files(id)"
+        ).execute()
         items = results.get("files", [])
 
         text_to_add = f"\n👤User: {user_text}\n🤖Yuu: {reply_text}\n"
 
         if items:
+            # --- 既存ファイルに追記 ---
             file_id = items[0]["id"]
 
+            # 既存内容の取得
             req = service.files().get_media(fileId=file_id)
             fh = io.BytesIO()
             downloader = MediaIoBaseDownload(fh, req)
@@ -52,27 +58,28 @@ def save_to_drive_log(user_text, reply_text):
             prev_content = fh.getvalue().decode("utf-8")
             new_content = prev_content + text_to_add
 
+            # アップロード
             stream = io.BytesIO(new_content.encode("utf-8"))
-            media = MediaIoBaseUpload(stream, mimetype="text/plain", resumable=False)
+            media = MediaIoBaseUpload(stream, mimetype="text/plain")
             service.files().update(fileId=file_id, media_body=media).execute()
 
         else:
+            # --- 新規作成 ---
             file_metadata = {"name": filename, "mimeType": "text/plain"}
             stream = io.BytesIO(text_to_add.encode("utf-8"))
-            media = MediaIoBaseUpload(stream, mimetype="text/plain", resumable=False)
+            media = MediaIoBaseUpload(stream, mimetype="text/plain")
             service.files().create(body=file_metadata, media_body=media).execute()
 
     except Exception as e:
         logging.error(f"Drive保存エラー: {e}")
 
-# -----------------------------
+# ---------------------------------
 # 天気取得（OpenWeather）
-# -----------------------------
-def get_weather(user_text="東京"):
+# ---------------------------------
+def get_weather(text):
     try:
-        import re
-        city_match = re.search(r"(.+?)の天気", user_text)
-        city = city_match.group(1) if city_match else "東京"
+        m = re.search(r"(.+?)の天気", text)
+        city = m.group(1) if m else "東京"
 
         url = (
             f"http://api.openweathermap.org/data/2.5/weather?"
@@ -92,12 +99,11 @@ def get_weather(user_text="東京"):
         logging.error(f"天気取得エラー: {e}")
         return "天気情報を取得できなかったよ。"
 
-# -----------------------------
-# 総理大臣・時事ニュース（Google検索）
-# -----------------------------
-def get_prime_minister():
+# ---------------------------------
+# Google検索（汎用）
+# ---------------------------------
+def google_search(query):
     try:
-        query = "日本の現在の総理大臣"
         url = (
             f"https://www.googleapis.com/customsearch/v1"
             f"?key={GOOGLE_SEARCH_API_KEY}&cx={GOOGLE_SEARCH_CX}&q={query}"
@@ -106,18 +112,25 @@ def get_prime_minister():
         data = res.json()
 
         if "items" in data:
-            snippet = data["items"][0]["snippet"]
-            return f"検索結果によると、{snippet}"
+            return data["items"][0]["snippet"]
 
-        return "今の総理大臣について詳しい情報が見つからなかったよ。"
+        return "検索結果が見つからなかったよ。"
 
     except Exception as e:
-        logging.error(f"検索APIエラー: {e}")
-        return "ニュース情報を取得できなかったよ。"
+        logging.error(f"Google検索エラー: {e}")
+        return "検索に失敗したよ。"
 
-# -----------------------------
-# Flask ルート
-# -----------------------------
+# ---------------------------------
+# 検索必要判定
+# ---------------------------------
+def needs_search(text):
+    keywords = ["誰", "何", "いつ", "どこ", "今", "最近", "最新",
+                "話題", "ニュース", "流行", "大統領", "総理", "首相"]
+    return any(k in text for k in keywords)
+
+# ---------------------------------
+# Flaskルート
+# ---------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -125,23 +138,23 @@ def index():
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
-    user_text = data.get("message", "").strip()
-
-    # --- 条件分岐（誤検知防止済み） ---
-    # 総理大臣
-    if user_text in ["総理", "総理大臣", "首相", "今の総理は？", "総理教えて"]:
-        reply_text = get_prime_minister()
+    text = data.get("message", "").strip()
 
     # 天気
-    elif "天気" in user_text:
-        reply_text = get_weather(user_text)
+    if "天気" in text:
+        reply = get_weather(text)
 
     # 時間
-    elif "時間" in user_text or "何時" in user_text:
+    elif "何時" in text or "時間" in text:
         now = datetime.datetime.now().strftime("%H時%M分")
-        reply_text = f"今は{now}だよ！"
+        reply = f"今は{now}だよ！"
 
-    # GPT 通常会話
+    # Google検索が必要
+    elif needs_search(text):
+        result = google_search(text)
+        reply = f"調べてみたよ！\n{result}"
+
+    # GPT（通常会話）
     else:
         prompt = (
             "あなたは明るく元気な孫のゆうくんです。"
@@ -152,25 +165,25 @@ def talk():
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": user_text}
+                {"role": "user", "content": text}
             ]
         )
-        reply_text = response.choices[0].message.content.strip()
+        reply = response.choices[0].message.content.strip()
 
-    # --- ログ保存 ---
-    save_to_drive_log(user_text, reply_text)
+    # ログ保存
+    save_to_drive_log(text, reply)
 
-    # --- 音声生成 ---
+    # 音声生成
     speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
         voice="verse",
-        input=reply_text
+        input=reply
     )
     audio_path = "static/output.mp3"
     with open(audio_path, "wb") as f:
         f.write(speech.read())
 
-    return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
+    return jsonify({"reply": reply, "audio_url": f"/{audio_path}"})
 
 
 if __name__ == "__main__":
