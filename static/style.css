@@ -1,6 +1,6 @@
-/* ----------------------------------
-   ゆうくんテーマデザイン＋季節背景
-   ---------------------------------- */
+/* -------------------------
+   全体レイアウトと季節背景
+   ------------------------- */
 body {
   font-family: 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
   text-align: center;
@@ -9,124 +9,113 @@ body {
   transition: background 1s ease;
 }
 
-/* 🌸春 */
-body.spring {
-  background: linear-gradient(180deg, #ffeef5 0%, #ffffff 100%);
-}
-
-/* ☀️夏 */
-body.summer {
-  background: linear-gradient(180deg, #dff6ff 0%, #ffffff 100%);
-}
-
-/* 🍁秋 */
-body.autumn {
-  background: linear-gradient(180deg, #fff2e0 0%, #ffffff 100%);
-}
-
-/* ❄️冬 */
-body.winter {
-  background: linear-gradient(180deg, #e6f3ff 0%, #ffffff 100%);
-}
+/* 🌸季節 */
+body.spring { background: linear-gradient(180deg, #ffeef5 0%, #ffffff 100%); }
+body.summer { background: linear-gradient(180deg, #dff6ff 0%, #ffffff 100%); }
+body.autumn { background: linear-gradient(180deg, #fff2e0 0%, #ffffff 100%); }
+body.winter { background: linear-gradient(180deg, #e6f3ff 0%, #ffffff 100%); }
 
 .container {
   background: #ffffffcc;
   display: inline-block;
-  padding: 45px 60px;
+  padding: 40px 50px;
   border-radius: 25px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.15);
   max-width: 90%;
   backdrop-filter: blur(6px);
 }
 
-h1 {
-  color: #4aa3ff;
-  font-size: 2.3em;
-  margin-bottom: 10px;
-}
-
-p {
-  font-size: 1.1em;
-  line-height: 1.8;
-  margin: 8px 0;
-}
-
+/* 文字やフォーム */
+h1 { color: #4aa3ff; font-size: 2.3em; margin-bottom: 10px; }
+p { font-size: 1.1em; line-height: 1.8; margin: 8px 0; }
 textarea {
-  width: 85%;
-  height: 90px;
-  border-radius: 15px;
-  border: 2px solid #b8dcff;
-  padding: 15px;
-  font-size: 1.1em;
-  resize: none;
+  width: 85%; height: 90px; border-radius: 15px; border: 2px solid #b8dcff;
+  padding: 15px; font-size: 1.1em; resize: none;
 }
 
+/* ボタン */
 button {
-  margin: 10px;
-  padding: 12px 28px;
-  border: none;
-  border-radius: 15px;
+  margin: 10px; padding: 12px 28px; border: none; border-radius: 15px;
+  cursor: pointer; font-size: 1.1em; font-weight: bold; transition: all 0.2s ease;
+}
+#voiceBtn { background-color: #74c0fc; color: white; }
+#voiceBtn:hover { background-color: #4da6f0; }
+button[type="submit"] { background-color: #ffb84c; color: white; }
+button[type="submit"]:hover { background-color: #ffa028; }
+
+/* 🎧マイク光るアニメーション */
+.mic-btn.recording {
+  animation: glow 1s infinite alternate;
+  background-color: #ff6b6b;
+  box-shadow: 0 0 20px #ff9999;
+}
+@keyframes glow {
+  from { box-shadow: 0 0 10px #ff6b6b; }
+  to { box-shadow: 0 0 30px #ff0000; }
+}
+
+/* 🔁モードスイッチ */
+.mode-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 30px;
+  margin-left: 10px;
+}
+.mode-switch input { display: none; }
+.slider {
+  position: absolute; cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc; border-radius: 30px;
+  transition: .3s;
+}
+.slider:before {
+  position: absolute; content: "";
+  height: 24px; width: 24px;
+  left: 3px; bottom: 3px;
+  background-color: white; border-radius: 50%;
+  transition: .3s;
+}
+input:checked + .slider { background-color: #66cc66; }
+input:checked + .slider:before { transform: translateX(30px); }
+.mode-label {
+  margin-left: 8px; font-weight: bold; color: #444;
+}
+
+/* 📅 カレンダー */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+.calendar-cell {
+  background: #dff2ff;
+  border-radius: 12px;
+  padding: 10px;
   cursor: pointer;
-  font-size: 1.1em;
-  font-weight: bold;
-  transition: all 0.2s ease;
+  transition: 0.2s;
+}
+.calendar-cell:hover {
+  background: #bde0fe;
+  transform: scale(1.03);
 }
 
-/* 🎙マイクボタン */
-#voiceBtn {
-  background-color: #74c0fc;
-  color: white;
-}
-#voiceBtn:hover {
-  background-color: #4da6f0;
-}
-
-/* 💬話しかけるボタン */
-button[type="submit"] {
-  background-color: #ffb84c;
-  color: white;
-}
-button[type="submit"]:hover {
-  background-color: #ffa028;
-}
-
-/* 返答表示 */
-#response {
-  margin-top: 25px;
-  font-size: 1.3em;
-  color: #444;
-  line-height: 1.7;
-}
-
-/* 📜 ログページ */
-body.logpage {
-  background: #fafafa;
-}
-
+/* ログ内容 */
 .log-day {
   background: #ffffffcc;
   padding: 20px;
   border-radius: 15px;
-  margin-bottom: 30px;
+  margin-top: 30px;
   box-shadow: 0 3px 8px rgba(0,0,0,0.1);
 }
+.log-entry { text-align: left; margin-bottom: 15px; }
+.log-entry p { margin: 5px 0; }
 
-.log-entry {
-  text-align: left;
-  margin-bottom: 15px;
-}
-
-.log-entry p {
-  margin: 5px 0;
-}
-
+/* 戻るリンク */
 .loglink a {
-  display: inline-block;
-  margin-top: 15px;
-  font-weight: bold;
-  text-decoration: none;
+  display: inline-block; margin-top: 15px;
+  font-weight: bold; text-decoration: none;
   color: #4aa3ff;
 }
-.loglink a:hover {
-  text-decoration: underline;
-}
+.loglink a:hover { text-decoration: underline; }
