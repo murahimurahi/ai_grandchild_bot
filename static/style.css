@@ -1,24 +1,29 @@
+/* ----------------------------------
+   ゆうくんテーマデザイン
+   ---------------------------------- */
 body {
   font-family: 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
-  background: linear-gradient(180deg, #fdfbfb 0%, #ebedee 100%);
+  background: linear-gradient(180deg, #e0f7ff 0%, #ffffff 100%);
   text-align: center;
   margin-top: 50px;
   color: #333;
 }
 
 .container {
-  background: white;
+  background: #ffffffcc;
   display: inline-block;
-  padding: 40px 50px;
+  padding: 45px 60px;
   border-radius: 25px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
   max-width: 90%;
+  backdrop-filter: blur(6px);
 }
 
 h1 {
-  color: #ff8da1;
-  font-size: 2.2em;
+  color: #4aa3ff; /* ゆうくんの爽やかな青 */
+  font-size: 2.3em;
   margin-bottom: 10px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
 }
 
 p {
@@ -31,11 +36,12 @@ textarea {
   width: 85%;
   height: 90px;
   border-radius: 15px;
-  border: 2px solid #ddd;
+  border: 2px solid #b8dcff;
   padding: 15px;
   font-size: 1.1em;
   resize: none;
   outline: none;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.05);
 }
 
 button {
@@ -49,22 +55,22 @@ button {
   transition: all 0.2s ease;
 }
 
-/* 🎙マイクボタン */
+/* 🎙マイクボタン（空色） */
 #voiceBtn {
-  background-color: #87cefa;
+  background-color: #74c0fc;
   color: white;
 }
 #voiceBtn:hover {
-  background-color: #5bb8f3;
+  background-color: #4da6f0;
 }
 
-/* 💬話しかけるボタン */
+/* 💬話しかけるボタン（オレンジで元気さ） */
 button[type="submit"] {
-  background-color: #ffb6c1;
+  background-color: #ffb84c;
   color: white;
 }
 button[type="submit"]:hover {
-  background-color: #ff91a4;
+  background-color: #ffa028;
 }
 
 /* 🎧返答部分 */
@@ -72,11 +78,13 @@ button[type="submit"]:hover {
   margin-top: 25px;
   font-size: 1.3em;
   color: #444;
+  line-height: 1.7;
 }
 
 audio {
   margin-top: 15px;
   width: 80%;
+  border-radius: 10px;
 }
 
 /* 📱スマホ対応 */
