@@ -1,29 +1,33 @@
-import os
+import os, json, datetime
 from flask import Flask, render_template, request, jsonify, make_response
 from openai import OpenAI
 
-# ---------------------------------------------------------------------
-# 基本設定
-# ---------------------------------------------------------------------
 app = Flask(__name__)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# ---------------------------------------------------------------------
-# ルート
-# ---------------------------------------------------------------------
+LOG_DIR = "data/logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
 @app.route("/")
 def index():
-    return render_template("index.html")
+    # 🌸 季節背景を決定
+    month = datetime.datetime.now().month
+    if month in [3, 4, 5]:
+        season = "spring"
+    elif month in [6, 7, 8]:
+        season = "summer"
+    elif month in [9, 10, 11]:
+        season = "autumn"
+    else:
+        season = "winter"
+    return render_template("index.html", season=season)
 
-# ---------------------------------------------------------------------
-# 会話処理（孫が祖父にやさしく話すゆうくん）
-# ---------------------------------------------------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
     message = data.get("message", "")
 
-    # --- Chat返答（穏やかな孫トーン） ---
+    # 💬 トーン：優しい孫っぽさは残し、相手指定を外す
     try:
         chat_response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -31,11 +35,10 @@ def talk():
                 {
                     "role": "system",
                     "content": (
-                        "あなたは優しく思いやりのある孫『ゆうくん』です。"
-                        "話す相手はおじいちゃんです。"
-                        "いつも明るく穏やかに、おじいちゃんを安心させるように話してください。"
+                        "あなたは優しく思いやりのある少年『ゆうくん』です。"
+                        "誰に対しても明るく穏やかに、相手が安心できるように話してください。"
                         "声のトーンは落ち着いていて、笑顔が伝わるような柔らかさを意識してください。"
-                        "語尾に『だよ』『ね！』『よ！』などを使っても構いませんが、"
+                        "語尾に『だよ』『ね！』『よ！』などを使ってもかまいませんが、"
                         "無理につけず、自然な流れで1回程度にとどめてください。"
                         "全体的にあたたかく、ゆっくりと優しいテンポで話してください。"
                     )
@@ -46,16 +49,15 @@ def talk():
         reply_text = chat_response.choices[0].message.content.strip()
     except Exception as e:
         print("Chatエラー:", e)
-        return jsonify({"reply": "ごめんね。ちょっと調子が悪いみたい。", "audio_url": None})
+        return jsonify({"reply": "ごめん、ちょっと調子が悪いみたい。", "audio_url": None})
 
-    # --- 音声生成 ---
+    # 🎙 音声生成
     os.makedirs("static", exist_ok=True)
-    audio_path = f"static/output.mp3"
-
+    audio_path = "static/output.mp3"
     try:
         with client.audio.speech.with_streaming_response.create(
             model="gpt-4o-mini-tts",
-            voice="fable",  # 優しく明るい少年声
+            voice="fable",
             input=reply_text
         ) as response:
             response.stream_to_file(audio_path)
@@ -64,7 +66,24 @@ def talk():
         print("音声生成エラー:", e)
         return jsonify({"reply": reply_text, "audio_url": None})
 
-    # --- キャッシュ防止＋ランダムURL付与 ---
+    # 💾 会話ログ（日ごと）
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    log_path = os.path.join(LOG_DIR, f"{today}.json")
+    log_entry = {
+        "time": datetime.datetime.now().strftime("%H:%M:%S"),
+        "user": message,
+        "yuukun": reply_text
+    }
+    if os.path.exists(log_path):
+        with open(log_path, "r", encoding="utf-8") as f:
+            logs = json.load(f)
+    else:
+        logs = []
+    logs.append(log_entry)
+    with open(log_path, "w", encoding="utf-8") as f:
+        json.dump(logs, f, ensure_ascii=False, indent=2)
+
+    # 🚫 キャッシュ防止
     response = make_response(jsonify({
         "reply": reply_text,
         "audio_url": f"/{audio_path}?v={os.urandom(4).hex()}"
@@ -73,8 +92,5 @@ def talk():
     return response
 
 
-# ---------------------------------------------------------------------
-# 起動設定
-# ---------------------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
