@@ -22,12 +22,11 @@ credentials = service_account.Credentials.from_service_account_file(
 )
 drive_service = build("drive", "v3", credentials=credentials)
 
-# Google Drive上のログフォルダ名
 FOLDER_NAME = "おはなし横丁ログ"
 
 
 # ---------------------------------------------------------------------
-# Driveフォルダの存在確認・作成
+# Google Driveのフォルダ確認・作成
 # ---------------------------------------------------------------------
 def get_or_create_folder():
     query = f"name='{FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder'"
@@ -35,16 +34,15 @@ def get_or_create_folder():
     files = results.get("files", [])
     if files:
         return files[0]["id"]
-    # なければ新規作成
     folder_metadata = {"name": FOLDER_NAME, "mimeType": "application/vnd.google-apps.folder"}
     folder = drive_service.files().create(body=folder_metadata, fields="id").execute()
     return folder["id"]
 
 
 # ---------------------------------------------------------------------
-# 会話ログをDriveに保存
+# 会話ログ保存
 # ---------------------------------------------------------------------
-def save_conversation(message, reply, text, audio_file):
+def save_conversation(message, reply, audio_file):
     folder_id = get_or_create_folder()
     today = datetime.date.today().strftime("%Y-%m-%d")
 
@@ -52,7 +50,6 @@ def save_conversation(message, reply, text, audio_file):
         "date": today,
         "user_message": message,
         "reply": reply,
-        "text": text
     }
 
     filename = f"{today}.json"
@@ -69,7 +66,7 @@ def save_conversation(message, reply, text, audio_file):
 
 
 # ---------------------------------------------------------------------
-# ルートページ
+# トップページ
 # ---------------------------------------------------------------------
 @app.route("/")
 def index():
@@ -83,15 +80,23 @@ def index():
 def talk():
     data = request.json
     message = data.get("message", "")
-    mode = data.get("mode", "short")  # 短文・長文モード
+    mode = data.get("mode", "short")
 
-    # --- ChatGPT応答 ---
+    # -------------------------------
+    # ChatGPT応答生成
+    # -------------------------------
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {
                 "role": "system",
-                "content": "あなたは孫の『ゆうくん』として、60代の家族に優しく話しかける小学生のような性格です。明るく自然に、丁寧語で、親しみを込めて返答してください。"
+                "content": (
+                    "あなたは優しい小学生の『ゆうくん』です。"
+                    "相手は大人の家族です。"
+                    "敬意を持ちつつ、自然な言葉で、優しく明るく返答してください。"
+                    "決して『おじいちゃん』『おばあちゃん』などの呼び方を使わないでください。"
+                    "会話はシンプルで親しみやすく、思いやりを持ったトーンにしてください。"
+                )
             },
             {"role": "user", "content": message}
         ],
@@ -100,20 +105,24 @@ def talk():
 
     reply_text = response.choices[0].message.content.strip()
 
-    # --- 音声生成 ---
+    # -------------------------------
+    # 音声生成（返答のみ）
+    # -------------------------------
     speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
-        voice="alloy",
-        input=f"明るく元気に話してください。{reply_text}"
+        voice="alloy",  # 声は自然な少年っぽい
+        input=reply_text
     )
 
     audio_path = "static/output.mp3"
     with open(audio_path, "wb") as f:
         f.write(speech.read())
 
-    # --- Google Driveにログ保存 ---
+    # -------------------------------
+    # Google Drive保存（失敗しても続行）
+    # -------------------------------
     try:
-        save_conversation(message, reply_text, "ゆうくん", audio_path)
+        save_conversation(message, reply_text, audio_path)
     except Exception as e:
         print("⚠️ Drive保存エラー:", e)
 
@@ -121,7 +130,7 @@ def talk():
 
 
 # ---------------------------------------------------------------------
-# 会話カレンダーページ
+# ログページ
 # ---------------------------------------------------------------------
 @app.route("/logs")
 def logs():
