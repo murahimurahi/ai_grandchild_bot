@@ -106,4 +106,72 @@ def get_prime_minister():
         data = res.json()
 
         if "items" in data:
-            snippet = data["items"][0]["sn]()
+            snippet = data["items"][0]["snippet"]
+            return f"検索結果によると、{snippet}"
+
+        return "今の総理大臣について詳しい情報が見つからなかったよ。"
+
+    except Exception as e:
+        logging.error(f"検索APIエラー: {e}")
+        return "ニュース情報を取得できなかったよ。"
+
+# -----------------------------
+# Flask ルート
+# -----------------------------
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/talk", methods=["POST"])
+def talk():
+    data = request.json
+    user_text = data.get("message", "").strip()
+
+    # --- 条件分岐（誤検知防止済み） ---
+    # 総理大臣
+    if user_text in ["総理", "総理大臣", "首相", "今の総理は？", "総理教えて"]:
+        reply_text = get_prime_minister()
+
+    # 天気
+    elif "天気" in user_text:
+        reply_text = get_weather(user_text)
+
+    # 時間
+    elif "時間" in user_text or "何時" in user_text:
+        now = datetime.datetime.now().strftime("%H時%M分")
+        reply_text = f"今は{now}だよ！"
+
+    # GPT 通常会話
+    else:
+        prompt = (
+            "あなたは明るく元気な孫のゆうくんです。"
+            "60〜80代の利用者にやさしく自然に話してください。"
+            "おじいちゃん・おばあちゃんという呼称は使わないでください。"
+        )
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_text}
+            ]
+        )
+        reply_text = response.choices[0].message.content.strip()
+
+    # --- ログ保存 ---
+    save_to_drive_log(user_text, reply_text)
+
+    # --- 音声生成 ---
+    speech = client.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice="verse",
+        input=reply_text
+    )
+    audio_path = "static/output.mp3"
+    with open(audio_path, "wb") as f:
+        f.write(speech.read())
+
+    return jsonify({"reply": reply_text, "audio_url": f"/{audio_path}"})
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
