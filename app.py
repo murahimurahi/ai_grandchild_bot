@@ -11,11 +11,12 @@ app = Flask(__name__)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # ------------------------
-# 保存フォルダ（Render対応）
+# ログ・音声フォルダ（Render対応）
 # ------------------------
-LOG_DIR = "static/logs"
+LOG_DIR = "/tmp/logs"
+AUDIO_DIR = "static/audio"
 os.makedirs(LOG_DIR, exist_ok=True)
-os.makedirs("static/audio", exist_ok=True)
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 
 # ------------------------
@@ -67,27 +68,27 @@ def talk():
                 "role": "system",
                 "content": (
                     "あなたは10歳前後の明るく優しい孫『ゆうくん』です。"
-                    "話し相手は祖父母のような存在ですが、"
-                    "『おじいちゃん』『おばあちゃん』とは呼ばず、"
-                    "自然に優しく、家族に話すような口調で話してください。"
-                    "言葉は短く、親しみを込めて話します。"
+                    "聞き手はおじいちゃんやおばあちゃんのような年上の家族ですが、"
+                    "直接そう呼ばずに、自然に穏やかに話してください。"
+                    "返答は短く自然で、絵文字や記号を使わず、温かみのある言葉で。"
+                    "冗談や括弧の補足説明は使わず、まっすぐ会話します。"
                 )
             },
             {"role": "user", "content": message}
         ]
     )
-    reply_text = response.choices[0].message.content
+    reply_text = response.choices[0].message.content.strip()
 
     # --- 音声生成 ---
     speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
-        voice="fable",  # 明るく自然な少年声
+        voice="fable",  # 明るい少年声
         input=reply_text
     )
 
-    # --- 音声保存 ---
+    # --- 音声ファイル保存 ---
     audio_filename = f"{datetime.datetime.now().strftime('%H%M%S')}.mp3"
-    audio_path = f"static/audio/{audio_filename}"
+    audio_path = os.path.join(AUDIO_DIR, audio_filename)
     with open(audio_path, "wb") as f:
         f.write(speech.read())
 
