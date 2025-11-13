@@ -1,80 +1,96 @@
-import os
-from flask import Flask, render_template, request, jsonify, make_response
-from openai import OpenAI
+/* ----------------------------------
+   ゆうくんテーマデザイン
+   ---------------------------------- */
+body {
+  font-family: 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif;
+  background: linear-gradient(180deg, #e0f7ff 0%, #ffffff 100%);
+  text-align: center;
+  margin-top: 50px;
+  color: #333;
+}
 
-# ---------------------------------------------------------------------
-# 基本設定
-# ---------------------------------------------------------------------
-app = Flask(__name__)
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+.container {
+  background: #ffffffcc;
+  display: inline-block;
+  padding: 45px 60px;
+  border-radius: 25px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  max-width: 90%;
+  backdrop-filter: blur(6px);
+}
 
-# ---------------------------------------------------------------------
-# ルート
-# ---------------------------------------------------------------------
-@app.route("/")
-def index():
-    return render_template("index.html")
+h1 {
+  color: #4aa3ff;
+  font-size: 2.3em;
+  margin-bottom: 10px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
 
-# ---------------------------------------------------------------------
-# 会話処理（孫が祖父にやさしく話すゆうくん）
-# ---------------------------------------------------------------------
-@app.route("/talk", methods=["POST"])
-def talk():
-    data = request.json
-    message = data.get("message", "")
+p {
+  font-size: 1.2em;
+  line-height: 1.8;
+  margin: 8px 0;
+}
 
-    # --- Chat返答（穏やかな孫トーン） ---
-    try:
-        chat_response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "あなたは優しく思いやりのある孫『ゆうくん』です。"
-                        "話す相手はおじいちゃんです。"
-                        "いつも明るく穏やかに、おじいちゃんを安心させるように話してください。"
-                        "声のトーンは落ち着いていて、笑顔が伝わるような柔らかさを意識してください。"
-                        "語尾に『だよ』『ね！』『よ！』などを使っても構いませんが、"
-                        "無理につけず、自然な流れで1回程度にとどめてください。"
-                        "全体的にあたたかく、ゆっくりと優しいテンポで話してください。"
-                    )
-                },
-                {"role": "user", "content": message}
-            ]
-        )
-        reply_text = chat_response.choices[0].message.content.strip()
-    except Exception as e:
-        print("Chatエラー:", e)
-        return jsonify({"reply": "ごめんね。ちょっと調子が悪いみたい。", "audio_url": None})
+textarea {
+  width: 85%;
+  height: 90px;
+  border-radius: 15px;
+  border: 2px solid #b8dcff;
+  padding: 15px;
+  font-size: 1.1em;
+  resize: none;
+  outline: none;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.05);
+}
 
-    # --- 音声生成 ---
-    os.makedirs("static", exist_ok=True)
-    audio_path = f"static/output.mp3"
+button {
+  margin: 10px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  font-size: 1.1em;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
 
-    try:
-        with client.audio.speech.with_streaming_response.create(
-            model="gpt-4o-mini-tts",
-            voice="fable",  # 優しく明るい少年声
-            input=reply_text
-        ) as response:
-            response.stream_to_file(audio_path)
-        print("音声生成成功: fable")
-    except Exception as e:
-        print("音声生成エラー:", e)
-        return jsonify({"reply": reply_text, "audio_url": None})
+/* 🎙マイクボタン（空色） */
+#voiceBtn {
+  background-color: #74c0fc;
+  color: white;
+}
+#voiceBtn:hover {
+  background-color: #4da6f0;
+}
 
-    # --- キャッシュ防止＋ランダムURL付与 ---
-    response = make_response(jsonify({
-        "reply": reply_text,
-        "audio_url": f"/{audio_path}?v={os.urandom(4).hex()}"
-    }))
-    response.headers["Cache-Control"] = "no-store"
-    return response
+/* 💬話しかけるボタン（オレンジで元気さ） */
+button[type="submit"] {
+  background-color: #ffb84c;
+  color: white;
+}
+button[type="submit"]:hover {
+  background-color: #ffa028;
+}
 
+/* 🎧返答部分 */
+#response {
+  margin-top: 25px;
+  font-size: 1.3em;
+  color: #444;
+  line-height: 1.7;
+}
 
-# ---------------------------------------------------------------------
-# 起動設定
-# ---------------------------------------------------------------------
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+audio {
+  margin-top: 15px;
+  width: 80%;
+  border-radius: 10px;
+}
+
+/* 📱スマホ対応 */
+@media (max-width: 600px) {
+  h1 { font-size: 1.8em; }
+  p { font-size: 1.1em; }
+  textarea { width: 95%; font-size: 1em; }
+  button { width: 90%; font-size: 1em; padding: 10px; }
+}
