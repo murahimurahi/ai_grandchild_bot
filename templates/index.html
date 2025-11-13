@@ -29,6 +29,7 @@
   const form = document.getElementById('talkForm');
   const responseDiv = document.getElementById('response');
 
+  // 💬 送信処理
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = document.getElementById('message').value;
@@ -46,6 +47,7 @@
 
     if (data.audio_url) {
       const audio = new Audio(data.audio_url);
+      // 🔊 自動再生がブロックされたら再生ボタンを表示
       audio.play().catch(err => {
         console.log("自動再生ブロック:", err);
         responseDiv.innerHTML += `<p>▶️ 再生ボタンを押して聞いてね。</p>
@@ -54,19 +56,55 @@
     }
   });
 
-  // 🎙 音声入力
+  // 🎙 音声入力（長めでも切れにくい改良版）
   const voiceBtn = document.getElementById('voiceBtn');
+  let recognition;
+
   voiceBtn.addEventListener('click', () => {
-    const recognition = new webkitSpeechRecognition();
+    // 既に認識中なら一度停止して再開
+    if (recognition) recognition.stop();
+
+    recognition = new webkitSpeechRecognition();
     recognition.lang = "ja-JP";
+    recognition.interimResults = true;  // 話しながら途中結果を反映
+    recognition.continuous = true;      // 無音でも続行
+    recognition.maxAlternatives = 1;
+
+    document.getElementById('message').value = "";
     recognition.start();
+    responseDiv.innerHTML = "🎙️ 話してください…（止まるまで自動送信）";
+
+    // 入力中のリアルタイム表示
     recognition.onresult = (e) => {
-      document.getElementById('message').value = e.results[0][0].transcript;
-      form.requestSubmit();
+      let transcript = "";
+      for (let i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript;
+      }
+      document.getElementById('message').value = transcript;
+    };
+
+    // 終了時の処理：話し終わって約1.5秒後に送信
+    let endTimer;
+    recognition.onend = () => {
+      clearTimeout(endTimer);
+      endTimer = setTimeout(() => {
+        const text = document.getElementById('message').value.trim();
+        if (text) {
+          responseDiv.innerHTML = "考え中…";
+          form.requestSubmit();
+        } else {
+          responseDiv.innerHTML = "👂 音声が認識されませんでした。もう一度話してね。";
+        }
+      }, 1500);
+    };
+
+    recognition.onerror = (e) => {
+      console.log("音声認識エラー:", e.error);
+      responseDiv.innerHTML = "⚠️ 音声入力でエラーが発生しました。";
     };
   });
 
-  // 🕊 通知（朝9時）
+  // 🕊 「今日も話そう」通知（朝9時）
   if ('Notification' in window) {
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
