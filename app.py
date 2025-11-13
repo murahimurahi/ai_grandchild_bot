@@ -22,14 +22,11 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # ===========================================================
 def save_local_log(user_text, reply_text, audio_filename):
     try:
-        # logs/2025-01-15/ のように日付フォルダを作成
         today = datetime.date.today().strftime("%Y-%m-%d")
         folder_path = os.path.join("logs", today)
         os.makedirs(folder_path, exist_ok=True)
 
-        # テキストログのパス
         log_path = os.path.join(folder_path, f"{today}.txt")
-
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
 
         log_line = (
@@ -97,8 +94,10 @@ def talk():
         # ▼ 通常会話（ゆうくん）
         prompt = (
             "あなたは明るく優しい孫のゆうくんです。"
-            "60〜80代の利用者に自然に優しく話します。"
-            "おばあちゃん・おじいちゃんという呼称は使わないこと。"
+            "利用者の言葉を毎回理解し、その内容に合わせて自然に返答します。"
+            "相手は60〜80代の人たちなので、やさしく丁寧な日常会話にしてください。"
+            "おばあちゃん・おじいちゃんという呼称は使いません。"
+            "同じ返答を繰り返さず、その都度気持ちを考えて返答します。"
         )
 
         res = client.chat.completions.create(
@@ -111,7 +110,7 @@ def talk():
         reply_text = res.choices[0].message.content.strip()
 
     # =======================================================
-    # 音声生成（ログ用ファイル）
+    # 音声生成（ログ用MP3）
     # =======================================================
     today = datetime.date.today().strftime("%Y-%m-%d")
     folder_path = os.path.join("logs", today)
@@ -129,20 +128,21 @@ def talk():
     with open(audio_path, "wb") as f:
         f.write(speech.read())
 
-    # =======================================================
-    # ログ保存（TXT に追記）
-    # =======================================================
+    # ログ保存
     save_local_log(user_text, reply_text, audio_path)
 
     # =======================================================
-    # ブラウザで再生するのは共通 output.mp3
+    # ブラウザ用音声ファイル（キャッシュ防止のため毎回違う名前）
     # =======================================================
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    browser_audio = f"static/output_{timestamp}.mp3"
+
     speech2 = client.audio.speech.create(
         model="gpt-4o-mini-tts",
         voice="verse",
         input=reply_text
     )
-    browser_audio = "static/output.mp3"
+
     with open(browser_audio, "wb") as f:
         f.write(speech2.read())
 
