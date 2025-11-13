@@ -2,19 +2,28 @@ import os
 from flask import Flask, render_template, request, jsonify, make_response
 from openai import OpenAI
 
+# ---------------------------------------------------------------------
+# 基本設定
+# ---------------------------------------------------------------------
 app = Flask(__name__)
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
+# ---------------------------------------------------------------------
+# ルート
+# ---------------------------------------------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
+# ---------------------------------------------------------------------
+# 会話処理（孫が祖父にやさしく話すゆうくん）
+# ---------------------------------------------------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
     message = data.get("message", "")
 
-    # --- Chat返答（相手指定なしVer.） ---
+    # --- Chat返答（穏やかな孫トーン） ---
     try:
         chat_response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -22,12 +31,13 @@ def talk():
                 {
                     "role": "system",
                     "content": (
-                        "あなたは明るく元気な少年『ゆうくん』です。"
-                        "誰に対してもやさしく自然に話しかけ、"
-                        "フレンドリーで親しみやすい口調で返答してください。"
-                        "語尾に『だよ！』『ね！』などを使ってもかまいませんが、"
-                        "不自然にならないよう控えめに使い、"
-                        "全体的にテンポよく自然な会話にしてください。"
+                        "あなたは優しく思いやりのある孫『ゆうくん』です。"
+                        "話す相手はおじいちゃんです。"
+                        "いつも明るく穏やかに、おじいちゃんを安心させるように話してください。"
+                        "声のトーンは落ち着いていて、笑顔が伝わるような柔らかさを意識してください。"
+                        "語尾に『だよ』『ね！』『よ！』などを使っても構いませんが、"
+                        "無理につけず、自然な流れで1回程度にとどめてください。"
+                        "全体的にあたたかく、ゆっくりと優しいテンポで話してください。"
                     )
                 },
                 {"role": "user", "content": message}
@@ -36,7 +46,7 @@ def talk():
         reply_text = chat_response.choices[0].message.content.strip()
     except Exception as e:
         print("Chatエラー:", e)
-        return jsonify({"reply": "ごめん、ちょっと調子が悪いみたい。", "audio_url": None})
+        return jsonify({"reply": "ごめんね。ちょっと調子が悪いみたい。", "audio_url": None})
 
     # --- 音声生成 ---
     os.makedirs("static", exist_ok=True)
@@ -45,7 +55,7 @@ def talk():
     try:
         with client.audio.speech.with_streaming_response.create(
             model="gpt-4o-mini-tts",
-            voice="fable",
+            voice="fable",  # 優しく明るい少年声
             input=reply_text
         ) as response:
             response.stream_to_file(audio_path)
@@ -54,7 +64,7 @@ def talk():
         print("音声生成エラー:", e)
         return jsonify({"reply": reply_text, "audio_url": None})
 
-    # --- キャッシュ無効化＆ランダムURLで再読み込み防止 ---
+    # --- キャッシュ防止＋ランダムURL付与 ---
     response = make_response(jsonify({
         "reply": reply_text,
         "audio_url": f"/{audio_path}?v={os.urandom(4).hex()}"
@@ -63,5 +73,8 @@ def talk():
     return response
 
 
+# ---------------------------------------------------------------------
+# 起動設定
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
