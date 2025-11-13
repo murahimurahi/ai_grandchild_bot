@@ -69,11 +69,14 @@
     const data = await res.json();
     responseDiv.innerHTML = `<p>${data.reply}</p>`;
 
+    // 🎧 音声再生（途切れ防止）
     if (data.audio_url) {
       const audio = new Audio(data.audio_url);
-      audio.play().catch(() => {
-        responseDiv.innerHTML += `<p>▶️ 再生ボタンを押して聞いてね。</p>
-        <audio controls src="${data.audio_url}"></audio>`;
+      audio.addEventListener('canplaythrough', () => {
+        audio.play().catch(() => {
+          responseDiv.innerHTML += `<p>▶️ 再生ボタンを押して聞いてね。</p>
+          <audio controls src="${data.audio_url}"></audio>`;
+        });
       });
     }
   });
@@ -94,7 +97,8 @@
     micBtn.classList.add('recording');
     subtitleDiv.textContent = "🎤 話してください…";
 
-    const limit = modeSwitch.checked ? 60000 : 15000; // 長文1分 / 短文15秒
+    // 🎚 音声入力制限（長文=30秒／短文=10秒）
+    const limit = modeSwitch.checked ? 30000 : 10000;
     const stopTimer = setTimeout(() => recognition.stop(), limit);
 
     recognition.onresult = (e) => {
@@ -121,7 +125,7 @@
     };
   });
 
-  // 🕊 通知（朝9時）
+  // 🕊 「今日も話そう」通知（朝9時）
   if ('Notification' in window) {
     Notification.requestPermission().then(permission => {
       if (permission === 'granted') {
