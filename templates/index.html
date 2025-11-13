@@ -5,143 +5,56 @@
   <title>おはなし横丁</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="{{ season }}">
+<body>
   <div class="container">
     <h1>おはなし横丁</h1>
-    <p>やさしく話せる、あたたかい時間をどうぞ。</p>
+    <p>ゆうくんと、やさしく話せる時間をどうぞ。</p>
 
     <form id="talkForm">
       <p>① 思ったことを一言つぶやく。</p>
-      <p>② 「話しかける」ボタン、または音声入力（マイクの絵のボタン）で話せます。</p>
-      <p>③ ゆうくんがすぐにやさしく返してくれます。</p>
+      <p>② 「話しかける」ボタン、または音声入力ボタンで話せます。</p>
 
       <textarea id="message" placeholder="こんにちは"></textarea><br>
-
-      <div class="mic-controls">
-        <button type="button" id="voiceBtn" class="mic-btn">🎙 マイク</button>
-
-        <div class="mode-box">
-          <label class="mode-switch">
-            <input type="checkbox" id="longMode">
-            <span class="slider"></span>
-            <span class="mode-label">短文</span>
-          </label>
-          <small class="mode-hint">（長く話したい時は切り替えてね）</small>
-        </div>
-      </div>
-
+      <button type="button" id="voiceBtn">🎙 音声入力</button>
       <button type="submit">話しかける</button>
     </form>
 
     <div id="response"></div>
-    <div id="subtitle" class="subtitle"></div>
-
-    <p class="loglink"><a href="/logs">📆 過去の会話カレンダーを見る</a></p>
   </div>
 
   <script>
-  const form = document.getElementById('talkForm');
-  const responseDiv = document.getElementById('response');
-  const micBtn = document.getElementById('voiceBtn');
-  const modeSwitch = document.getElementById('longMode');
-  const modeLabel = document.querySelector('.mode-label');
-  const subtitleDiv = document.getElementById('subtitle');
+    const form = document.getElementById('talkForm');
+    const responseDiv = document.getElementById('response');
 
-  // 🔁 モード表示切り替え
-  modeSwitch.addEventListener('change', () => {
-    modeLabel.textContent = modeSwitch.checked ? "長文" : "短文";
-  });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = document.getElementById('message').value;
+      responseDiv.innerHTML = "考え中…";
 
-  // 💬 メッセージ送信
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const message = document.getElementById('message').value;
-    if (!message.trim()) return;
-    responseDiv.innerHTML = "考え中…";
-    subtitleDiv.textContent = "";
-
-    const res = await fetch('/talk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message })
-    });
-
-    const data = await res.json();
-    responseDiv.innerHTML = `<p>${data.reply}</p>`;
-
-    // 🎧 音声再生（途切れ防止）
-    if (data.audio_url) {
-      const audio = new Audio(data.audio_url);
-      audio.addEventListener('canplaythrough', () => {
-        audio.play().catch(() => {
-          responseDiv.innerHTML += `<p>▶️ 再生ボタンを押して聞いてね。</p>
-          <audio controls src="${data.audio_url}"></audio>`;
-        });
+      const res = await fetch('/talk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
       });
-    }
-  });
+      const data = await res.json();
 
-  // 🎙 音声認識＋リアルタイム字幕
-  let recognition;
-  micBtn.addEventListener('click', () => {
-    if (recognition) recognition.stop();
-
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = "ja-JP";
-    recognition.interimResults = true;
-    recognition.continuous = true;
-    recognition.maxAlternatives = 1;
-
-    document.getElementById('message').value = "";
-    recognition.start();
-    micBtn.classList.add('recording');
-    subtitleDiv.textContent = "🎤 話してください…";
-
-    // 🎚 音声入力制限（長文=30秒／短文=10秒）
-    const limit = modeSwitch.checked ? 30000 : 10000;
-    const stopTimer = setTimeout(() => recognition.stop(), limit);
-
-    recognition.onresult = (e) => {
-      let transcript = "";
-      for (let i = 0; i < e.results.length; i++) {
-        transcript += e.results[i][0].transcript;
-      }
-      document.getElementById('message').value = transcript;
-      subtitleDiv.textContent = transcript;
-    };
-
-    recognition.onend = () => {
-      clearTimeout(stopTimer);
-      micBtn.classList.remove('recording');
-      subtitleDiv.textContent = "";
-      const text = document.getElementById('message').value.trim();
-      if (text) form.requestSubmit();
-    };
-
-    recognition.onerror = (e) => {
-      micBtn.classList.remove('recording');
-      subtitleDiv.textContent = "⚠️ 音声認識に失敗しました。";
-      console.log("音声認識エラー:", e.error);
-    };
-  });
-
-  // 🕊 「今日も話そう」通知（朝9時）
-  if ('Notification' in window) {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        const now = new Date();
-        const nineAM = new Date();
-        nineAM.setHours(9, 0, 0, 0);
-        const delay = nineAM - now > 0 ? nineAM - now : nineAM.getTime() + 86400000 - now.getTime();
-        setTimeout(() => {
-          new Notification("ゆうくんからのメッセージ", {
-            body: "おはよう！今日も少しだけ話そうか？😊",
-            icon: "/static/icon.png"
-          });
-        }, delay);
-      }
+      responseDiv.innerHTML = `
+        <p>${data.reply}</p>
+        ${data.audio_url ? `<audio autoplay controls src="${data.audio_url}"></audio>` : ''}
+      `;
     });
-  }
+
+    // 音声入力
+    const voiceBtn = document.getElementById('voiceBtn');
+    voiceBtn.addEventListener('click', () => {
+      const recognition = new webkitSpeechRecognition();
+      recognition.lang = "ja-JP";
+      recognition.start();
+      recognition.onresult = (e) => {
+        document.getElementById('message').value = e.results[0][0].transcript;
+        form.requestSubmit();
+      };
+    });
   </script>
 </body>
 </html>
