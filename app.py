@@ -1,234 +1,137 @@
 import os
-import datetime
 import logging
+from datetime import datetime
 import requests
-from flask import Flask, render_template, request, jsonify, send_file
-from openai import OpenAI
+from flask import Flask, request, jsonify, render_template
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
+# ---------------------------------------------------------------------
+# Flask 初期化
+# ---------------------------------------------------------------------
+app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-
-# -----------------------------
-# 今日の天気
-# -----------------------------
-def get_weather_today(user_text="東京"):
-    try:
-        import re
-        city_match = re.search(r"(.+?)の天気", user_text)
-        city = city_match.group(1).replace("の", "") if city_match else "東京"
-
-        url = (
-            f"http://api.openweathermap.org/data/2.5/weather?"
-            f"q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
-        )
-        res = requests.get(url, timeout=6)
-        data = res.json()
-
-        if data.get("cod") != 200:
-            return f"{city}の天気は見つからなかったよ。"
-
-        temp = data["main"]["temp"]
-        desc = data["weather"][0]["description"]
-        return f"今日の{city}の天気は{desc}、気温は{temp:.1f}度だよ。"
-
-    except:
-        return "天気情報を取得できなかったよ。"
-
-
-# -----------------------------
-# 明日の天気（OpenWeather forecast）
-# -----------------------------
-def get_weather_tomorrow(user_text="東京"):
-    try:
-        import re
-        city_match = re.search(r"(.+?)の明日の天気", user_text)
-        if not city_match:
-            city_match = re.search(r"(.+?)の天気", user_text)
-        city = city_match.group(1).replace("の", "") if city_match else "東京"
-
-        url = (
-            f"https://api.openweathermap.org/data/2.5/forecast?"
-            f"q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
-        )
-        res = requests.get(url, timeout=6)
-        data = res.json()
-
-        if data.get("cod") != "200":
-            return f"明日の{city}の天気は見つからなかったよ。"
-
-        # tomorrow 12:00 の天気を取る（最も安定している）
-        target = None
-        for item in data["list"]:
-            if "12:00:00" in item["dt_txt"]:
-                target = item
-                break
-
-        if not target:
-            return f"明日の{city}の天気データが見つからなかったよ。"
-
-        temp = target["main"]["temp"]
-        desc = target["weather"][0]["description"]
-        return f"明日の{city}の天気は{desc}、最高気温は{temp:.1f}度くらいだよ。"
-
-    except:
-        return "明日の天気情報を取得できなかったよ。"
-
-
-# -----------------------------
-# ログ保存
-# -----------------------------
-def save_log(user_text, bot_text, audio_file, timestamp):
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    folder = f"logs/{today}"
-
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-
-    with open(f"{folder}/log.txt", "a", encoding="utf-8") as f:
-        f.write(f"[TIME]{timestamp}\n")
-        f.write(f"【あなた】{user_text}\n")
-        f.write(f"【ゆうくん】{bot_text}\n")
-        f.write("[END]\n\n")
-
-    if audio_file:
-        with open(f"{folder}/voice_{timestamp}.mp3", "wb") as f:
-            f.write(audio_file)
-
-
-# -----------------------------
-# ログ一覧
-# -----------------------------
-@app.route("/logs")
-def logs():
-    if not os.path.exists("logs"):
-        os.makedirs("logs")
-
-    days = sorted(os.listdir("logs"))
-    days = [d for d in days if not d.startswith(".")]
-    return render_template("logs.html", days=days)
-
-
-# -----------------------------
-# ログ表示（会話ごと）
-# -----------------------------
-@app.route("/logs/<day>")
-def show_log(day):
-    folder = f"logs/{day}"
-    textfile = f"{folder}/log.txt"
-
-    conversations = []
-
-    if os.path.exists(textfile):
-        with open(textfile, "r", encoding="utf-8") as f:
-            blocks = f.read().split("[END]")
-
-        for block in blocks:
-            block = block.strip()
-            if not block:
-                continue
-
-            lines = block.split("\n")
-            ts = lines[0].replace("[TIME]", "")
-            text = "\n".join(lines[1:])
-
-            voice_file = f"{folder}/voice_{ts}.mp3"
-            voice_url = f"/voice/{day}/{ts}" if os.path.exists(voice_file) else None
-
-            conversations.append({
-                "timestamp": ts,
-                "text": text,
-                "voice": voice_url
-            })
-
-    return render_template(
-        "log_view.html",
-        day=day,
-        conversations=conversations
-    )
-
-
-# -----------------------------
-# 音声取得
-# -----------------------------
-@app.route("/voice/<day>/<ts>")
-def get_voice(day, ts):
-    filepath = f"logs/{day}/voice_{ts}.mp3"
-    if not os.path.exists(filepath):
-        return "音声が見つからないよ。", 404
-    return send_file(filepath, mimetype="audio/mpeg")
-
-
-# -----------------------------
-# 会話
-# -----------------------------
-@app.route("/talk", methods=["POST"])
-def talk():
-    data = request.json
-    user_text = data.get("message", "").strip()
-
-    # ✅ 明日の天気
-    if "明日" in user_text and "天気" in user_text:
-        reply_text = get_weather_tomorrow(user_text)
-
-    # 今日の天気
-    elif "天気" in user_text:
-        reply_text = get_weather_today(user_text)
-
-    # 日付・曜日
-    elif any(k in user_text for k in ["何日", "今日", "日付", "曜日"]):
-        now = datetime.datetime.now()
-        youbi = ["月", "火", "水", "木", "金", "土", "日"][now.weekday()]
-        reply_text = f"今日は {now.month}月{now.day}日、{youbi}曜日だよ。"
-
-    # 時間
-    elif any(k in user_text for k in ["何時", "時間", "いま何時"]):
-        now = datetime.datetime.now().strftime("%H時%M分")
-        reply_text = f"今は{now}だよ。"
-
-    # 通常会話
+# ---------------------------------------------------------------------
+# キャラクター別の音声タイプ
+# ---------------------------------------------------------------------
+def get_voice(character: str):
+    if "孫娘" in character:
+        return "verse"
+    elif "孫息子" in character:
+        return "nova"
+    elif "おばあちゃん" in character or "婆" in character:
+        return "alloy"
     else:
-        prompt = (
-            "あなたは優しい孫のゆうくんです。利用者と自然に会話します。"
-            "呼称として『おばあちゃん』『おじいちゃん』は使わず、"
-            "丁寧で優しい言葉で話してください。"
-        )
+        return "nova"
 
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_text}
+
+# ---------------------------------------------------------------------
+# 天気取得（Open-Meteo API：無料・APIキー不要）
+# ---------------------------------------------------------------------
+def get_weather_text():
+    try:
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": 35.17,    # 名古屋付近
+            "longitude": 136.91,
+            "current_weather": True,
+            "timezone": "Asia/Tokyo"
+        }
+        r = requests.get(url, params=params)
+        data = r.json()
+        w = data["current_weather"]
+        temp = w.get("temperature")
+        wind = w.get("windspeed")
+        return f"今の気温は {temp}℃、風速は {wind}m/s みたいですよ。"
+    except:
+        return "天気情報を取得できませんでした。"
+
+
+# ---------------------------------------------------------------------
+# 音声生成
+# ---------------------------------------------------------------------
+def generate_voice(text: str, voice_type: str):
+    url = "https://api.openai.com/v1/audio/speech"
+    headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+    payload = {
+        "model": "gpt-4o-mini-tts",
+        "voice": voice_type,
+        "input": text
+    }
+
+    audio = requests.post(url, headers=headers, json=payload)
+    filename = f"static/voice_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp3"
+
+    with open(filename, "wb") as f:
+        f.write(audio.content)
+
+    return filename
+
+
+# ---------------------------------------------------------------------
+# トップページ（404 回避）
+# ---------------------------------------------------------------------
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+# ---------------------------------------------------------------------
+# チャット画面
+# ---------------------------------------------------------------------
+@app.route("/chat")
+def chat_page():
+    return render_template("chat.html")
+
+
+# ---------------------------------------------------------------------
+# API：会話
+# ---------------------------------------------------------------------
+@app.route("/api/chat", methods=["POST"])
+def chat_api():
+    data = request.json
+    user_msg = data.get("message", "")
+    character = data.get("character", "孫娘（みさちゃん）")
+
+    # --- 日付・時間 ---
+    if "今日" in user_msg and "日" in user_msg:
+        reply = f"今日は {datetime.now().strftime('%Y年%m月%d日')} ですよ。"
+    elif "今" in user_msg and "時間" in user_msg:
+        reply = f"今の時刻は {datetime.now().strftime('%H時%M分')} です。"
+    # --- 天気 ---
+    elif "天気" in user_msg:
+        reply = get_weather_text()
+    else:
+        # 通常会話（OpenAI Chat）
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+        payload = {
+            "model": "gpt-4o-mini",
+            "messages": [
+                {"role": "system", "content": f"あなたは {character} として優しく会話してください。"},
+                {"role": "user", "content": user_msg}
             ]
-        )
-        reply_text = res.choices[0].message.content.strip()
+        }
+        res = requests.post(url, headers=headers, json=payload).json()
+        reply = res["choices"][0]["message"]["content"]
 
-    # 音声合成
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    audio_path = f"static/output_{ts}.mp3"
+    # 音声生成
+    voice_type = get_voice(character)
+    audio_path = generate_voice(reply, voice_type)
 
-    speech = client.audio.speech.create(
-        model="gpt-4o-mini-tts",
-        voice="verse",
-        input=reply_text
-    )
-    audio_binary = speech.read()
-
-    with open(audio_path, "wb") as f:
-        f.write(audio_binary)
-
-    save_log(user_text, reply_text, audio_binary, ts)
+    # 音声ログ（画面下に表示する用）
+    log_block = f"【音声ログ】\n生成ボイス: {voice_type}\nファイル: {audio_path}"
 
     return jsonify({
-        "reply": reply_text,
-        "audio_url": "/" + audio_path
+        "reply": reply,
+        "audio": audio_path,
+        "log": log_block
     })
 
 
+# ---------------------------------------------------------------------
+# 起動
+# ---------------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(debug=True)
