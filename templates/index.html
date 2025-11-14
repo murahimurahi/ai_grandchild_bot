@@ -16,112 +16,91 @@
         <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
 
         <div class="buttons">
-            <button id="voiceBtn">🎤 音声入力</button>
+            <button id="voiceBtn" class="record-btn">🎤 音声入力</button>
             <button id="sendBtn">話しかける</button>
         </div>
 
-        <!-- 返事 -->
         <div id="responseArea"></div>
 
-        <!-- 音声プレイヤー -->
-        <audio id="voicePlayer" controls preload="auto"
-               style="width: 100%; margin-top: 20px; display:none;"></audio>
+        <audio id="voicePlayer" controls preload="auto" style="display:none; width:100%; margin-top:15px;"></audio>
 
-        <p style="margin-top:30px;">
+        <p style="margin-top:25px;">
             <a href="./logs">🗂 過去の会話カレンダーを見る</a>
         </p>
     </div>
 
-    <script>
-    /* ==========================================================
-       🎤 音声入力（録音 → 自動送信 → 5秒固定）
-       UI は一切変更せず内部処理だけ安定化
-    ========================================================== */
-    let recognition = null;
-    let autoSendTimer = null;
+<script>
+let recognition;
+let autoSendTimer = null;
 
+// -----------------------------------------------
+// 音声認識
+// -----------------------------------------------
+try {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.lang = "ja-JP";
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+        document.getElementById("voiceBtn").classList.add("recording");
+    };
+
+    recognition.onend = () => {
+        document.getElementById("voiceBtn").classList.remove("recording");
+    };
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        document.getElementById("userInput").value = text;
+
+        if (autoSendTimer) clearTimeout(autoSendTimer);
+
+        // 5秒後に自動送信
+        autoSendTimer = setTimeout(() => sendMessage(), 5000);
+    };
+
+} catch (e) {
+    console.warn("音声認識エラー:", e);
+}
+
+// 音声ボタン
+document.getElementById("voiceBtn").onclick = () => {
     try {
-        const SpeechRecognition =
-            window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition.start();
+    } catch (e) {}
+};
 
-        recognition = new SpeechRecognition();
-        recognition.lang = "ja-JP";
-        recognition.interimResults = true;
+// -----------------------------------------------
+// メッセージ送信
+// -----------------------------------------------
+document.getElementById("sendBtn").onclick = () => sendMessage();
 
-        recognition.onresult = (event) => {
-            const text = event.results[0][0].transcript;
+function sendMessage() {
+    const text = document.getElementById("userInput").value.trim();
+    if (!text) return;
 
-            // 入力欄に残す
-            document.getElementById("userInput").value = text;
+    document.getElementById("responseArea").innerHTML = "ゆうくんが考え中…";
 
-            // 既存タイマー解除
-            if (autoSendTimer) clearTimeout(autoSendTimer);
+    fetch("/talk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("responseArea").innerHTML = data.reply;
 
-            // 5秒後に自動送信
-            autoSendTimer = setTimeout(() => {
-                sendMessage();
-            }, 5000);
-        };
+        const player = document.getElementById("voicePlayer");
+        player.style.display = "block";
+        player.src = data.audio_url;
 
-    } catch (err) {
-        console.warn("音声認識が利用できないブラウザです:", err);
-    }
+        player.load();
+        setTimeout(() => player.play(), 150);
+    });
 
-    document.getElementById("voiceBtn").onclick = () => {
-        if (recognition) {
-            try {
-                recognition.start();
-            } catch (e) {
-                console.warn("音声認識開始エラー:", e);
-            }
-        }
-    };
-
-    /* ==========================================================
-       ✉️ メッセージ送信処理（内部安定化）
-    ========================================================== */
-    document.getElementById("sendBtn").onclick = () => {
-        sendMessage();
-    };
-
-    async function sendMessage() {
-        const text = document.getElementById("userInput").value.trim();
-        if (!text) return;
-
-        const responseArea = document.getElementById("responseArea");
-        responseArea.innerHTML = "ゆうくんが考え中…";
-
-        try {
-            const res = await fetch("/talk", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: text })
-            });
-
-            const data = await res.json();
-
-            // テキスト返答表示
-            responseArea.innerHTML = data.reply;
-
-            // 音声プレイヤー再生
-            const player = document.getElementById("voicePlayer");
-            player.style.display = "block";
-            player.src = data.audio_url + "?t=" + Date.now();
-
-            // 音途切れ防止：load → 少し待ってから play
-            player.load();
-            setTimeout(() => {
-                player.play().catch(e => console.warn("再生エラー:", e));
-            }, 150);
-
-        } catch (err) {
-            responseArea.innerHTML =
-                "ごめんね、うまく返事ができなかったみたい。もう一度お願いしてもいい？";
-
-            console.error("通信エラー:", err);
-        }
-    }
-    </script>
-
+    // 入力欄の文字は残す（仕様）
+}
+</script>
 </body>
 </html>
