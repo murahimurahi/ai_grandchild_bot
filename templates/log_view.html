@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>会話ログ</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+<div class="container small">
+    <h2>📘 {{ day }} の会話</h2>
+    <p><a href="/logs">📅 カレンダーに戻る</a></p>
+
+    <pre class="logbox">{{ text_content }}</pre>
+
+    {% if has_voice %}
+        <h3>🎧 音声ログ</h3>
+        <audio src="{{ voice_path }}" controls></audio>
+    {% endif %}
+</div>
+</body>
+</html>
