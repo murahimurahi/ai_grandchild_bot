@@ -9,72 +9,63 @@
 
 <body>
     <div class="container">
+
         <h1>おはなし横丁</h1>
-        <p>ゆうくんと、楽しく話す時間だよ。</p>
+        <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
 
         <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
 
         <div class="buttons">
-            <button id="voiceBtn">🎤 音声入力</button>
+            <button id="voiceBtn" class="voice">🎤 音声入力</button>
             <button id="sendBtn">話しかける</button>
         </div>
 
-        <div id="responseArea"></div>
-
-        <audio id="voicePlayer" controls preload="auto"
-               style="width: 100%; margin-top: 20px; display:none;"></audio>
-
-        <p style="margin-top:15px; font-size:14px; color:#444;">
-            👉 音声入力は5秒話すと自動で送信されるよ。<br>
+        <p class="tips">
+            👉 音声入力は 5 秒話すと自動で送信されるよ。<br>
             👉 下のカレンダーから過去の会話も見られるよ。
         </p>
 
-        <p style="margin-top:20px;">
-            <a href="./logs">🗂 過去の会話カレンダーを見る</a>
+        <div id="responseArea"></div>
+
+        <audio id="voicePlayer" controls preload="auto" style="width: 100%; margin-top: 20px; display:none;"></audio>
+
+        <p style="margin-top:30px;">
+            <a href="/logs">📁 過去の会話カレンダーを見る</a>
         </p>
     </div>
 
     <script>
-    /* ------------------------------------------------
-       🎤 音声入力（5秒で自動送信）
-    -------------------------------------------------- */
     let recognition;
-    let autoSendTimer = null;
+    let timer = null;
 
     try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SR();
         recognition.lang = "ja-JP";
         recognition.interimResults = true;
 
-        recognition.onresult = (event) => {
-            const text = event.results[0][0].transcript;
+        recognition.onstart = () => {
+            document.getElementById("voiceBtn").classList.add("recording");
+        };
+
+        recognition.onend = () => {
+            document.getElementById("voiceBtn").classList.remove("recording");
+        };
+
+        recognition.onresult = (e) => {
+            const text = e.results[0][0].transcript;
             document.getElementById("userInput").value = text;
 
-            if (autoSendTimer) clearTimeout(autoSendTimer);
-
-            autoSendTimer = setTimeout(() => {
-                sendMessage();
-            }, 5000);
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => { sendMessage(); }, 5000);
         };
-    } catch (e) {
-        console.warn("[音声認識エラー]", e);
-    }
+    } catch(e) {}
 
     document.getElementById("voiceBtn").onclick = () => {
-        try {
-            recognition.start();
-        } catch (e) {
-            console.warn("音声認識開始できません:", e);
-        }
+        try { recognition.start(); } catch(e){}
     };
 
-    /* ------------------------------------------------
-       ✉️ メッセージ送信
-    -------------------------------------------------- */
-    document.getElementById("sendBtn").onclick = () => {
-        sendMessage();
-    };
+    document.getElementById("sendBtn").onclick = () => sendMessage();
 
     function sendMessage() {
         const text = document.getElementById("userInput").value.trim();
@@ -91,22 +82,12 @@
         .then(data => {
             document.getElementById("responseArea").innerHTML = data.reply;
 
-            const player = document.getElementById("voicePlayer");
-            player.style.display = "block";
-            player.src = data.audio_url + "?t=" + Date.now();
-
-            player.load();
-            setTimeout(() => {
-                player.play().catch(e => console.warn("再生エラー:", e));
-            }, 120);
-        })
-        .catch(err => {
-            document.getElementById("responseArea").innerHTML =
-                "ごめんね、なんだかエラーが起きたみたい。もう一度言ってね。";
-            console.error(err);
+            const p = document.getElementById("voicePlayer");
+            p.style.display = "block";
+            p.src = data.audio_url + "?t=" + Date.now();
+            p.load();
+            setTimeout(() => p.play(), 120);
         });
-
-        /* ❌ 入力欄を消さない（ここを削除したのが今回の修正） */
     }
     </script>
 </body>
