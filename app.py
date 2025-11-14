@@ -17,7 +17,10 @@ def get_weather(user_text):
         import re
         m = re.search(r"(.*)の天気", user_text)
         city = m.group(1) if m else "名古屋"
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
+        url = (
+            f"http://api.openweathermap.org/data/2.5/weather?q={city}"
+            f"&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
+        )
         r = requests.get(url)
         data = r.json()
 
@@ -44,10 +47,9 @@ def ai_reply(user_text):
             {
                 "role": "system",
                 "content": (
-                    "あなたは優しい孫のゆうくんとして丁寧語で話します。"
-                    "相手の呼び方は『あなた』で統一します。"
-                    "『おじいちゃん』『おばあちゃん』などの家族呼称は絶対に使いません。"
-                    "相手から要望があれば、その呼び方に従います。"
+                    "あなたは優しい孫のゆうくんとして、丁寧語で話します。"
+                    "相手を『おじいちゃん』と呼んではいけません。"
+                    "呼称は必ず『あなた』に統一します。"
                 )
             },
             {"role": "user", "content": user_text}
@@ -59,7 +61,7 @@ def ai_reply(user_text):
 
 
 # -------------------------
-# TTS（音声生成）
+# TTS（mp3保存）
 # -------------------------
 def generate_voice(text, filename):
     url = "https://api.openai.com/v1/audio/speech"
@@ -76,11 +78,11 @@ def generate_voice(text, filename):
 
 
 # -------------------------
-# UI
+# UI ページ
 # -------------------------
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("chat.html")
 
 
 @app.route("/chat")
@@ -96,24 +98,28 @@ def chat_api():
     data = request.json
     user_text = data.get("message", "").strip()
 
-    # 特殊処理
+    # --- 特殊処理 ---
     if "天気" in user_text:
         reply = get_weather(user_text)
+    elif "何時" in user_text or "時間" in user_text:
+        reply = f"今は {datetime.now().strftime('%H時%M分')} ですよ。"
+    elif "今日" in user_text and "日" in user_text:
+        reply = f"今日は {datetime.now().strftime('%Y年%m月%d日')} ですよ。"
     else:
         reply = ai_reply(user_text)
 
-    # 保存処理
+    # --- 保存処理 ---
     day = datetime.now().strftime("%Y-%m-%d")
-    if not os.path.exists(f"logs/{day}"):
-        os.makedirs(f"logs/{day}")
+    os.makedirs(f"logs/{day}", exist_ok=True)
 
     conv_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
     mp3_path = f"logs/{day}/{conv_id}.mp3"
     json_path = f"logs/{day}/{conv_id}.json"
 
+    # 音声生成
     generate_voice(reply, mp3_path)
 
+    # JSON保存
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"user": user_text, "bot": reply}, f, ensure_ascii=False)
 
