@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Grandchild Chat</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="chat-container">
+
+        <div class="chat-header">
+            <h2>AI Grandchild Bot</h2>
+        </div>
+
+        <div id="messages" class="messages"></div>
+
+        <!-- 音声ログブロック（各メッセージの下に JS で追加される） -->
+        <div id="voice-logs" class="voice-logs"></div>
+
+        <!-- 入力欄 -->
+        <div class="input-area">
+            <input id="textInput" type="text" placeholder="メッセージを入力 (音声でも可)">
+            <button id="sendBtn">送信</button>
+        </div>
+
+        <!-- 音声ボタン（見た目は残すが自動認識ON） -->
+        <button id="voiceBtn" class="voice-button">🎤</button>
+
+    </div>
+
+    <script>
+        const messagesDiv = document.getElementById("messages");
+        const voiceLogsDiv = document.getElementById("voice-logs");
+        const sendBtn = document.getElementById("sendBtn");
+        const textInput = document.getElementById("textInput");
+        const voiceBtn = document.getElementById("voiceBtn");
+
+        // ---------------------------
+        // 音声認識（自動スタート）
+        // ---------------------------
+        let recognition;
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.lang = "ja-JP";
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onresult = function(event) {
+                const text = event.results[event.results.length - 1][0].transcript;
+                sendText(text);
+            };
+
+            recognition.start();
+        }
+
+        voiceBtn.onclick = () => {
+            // ボタンは残すが、自動で常時ONなので予備
+            if (recognition) recognition.start();
+        };
+
+        // ---------------------------
+        // メッセージ送信
+        // ---------------------------
+        sendBtn.onclick = () => {
+            const text = textInput.value.trim();
+            if (text !== "") sendText(text);
+        };
+
+        textInput.addEventListener("keydown", e => {
+            if (e.key === "Enter") sendBtn.click();
+        });
+
+        // ---------------------------
+        // サーバーへ送信
+        // ---------------------------
+        function sendText(text) {
+            addMessage("あなた", text);
+            textInput.value = "";
+
+            fetch("/api/chat", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ message: text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                addMessage("AI孫", data.reply);
+
+                // 音声URL（会話ごと）
+                if (data.voice_url) {
+                    addVoiceLog(data.voice_url);
+                }
+            });
+        }
+
+        // ---------------------------
+        // メッセージ描画
+        // ---------------------------
+        function addMessage(sender, text) {
+            const div = document.createElement("div");
+            div.className = "message";
+            div.innerHTML = `<strong>${sender}：</strong> ${text}`;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // ---------------------------
+        // 音声ログ追加（各会話の下）
+        // ---------------------------
+        function addVoiceLog(url) {
+            const audio = document.createElement("audio");
+            audio.controls = true;
+            audio.src = url;
+            audio.className = "voice-log-item";
+
+            voiceLogsDiv.appendChild(audio);
+            voiceLogsDiv.scrollTop = voiceLogsDiv.scrollHeight;
+        }
+    </script>
+
+</body>
+</html>
