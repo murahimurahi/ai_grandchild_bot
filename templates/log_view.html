@@ -12,12 +12,16 @@
     <h2>📘 {{ day }} の会話</h2>
     <p><a href="/logs">📅 カレンダーに戻る</a></p>
 
-    <pre class="logbox">{{ text_content }}</pre>
+    {% for c in conversations %}
+        <pre class="logbox">{{ c.text }}</pre>
 
-    {% if has_voice %}
-        <h3>🎧 音声ログ</h3>
-        <audio src="/voice/{{ day }}" controls></audio>
-    {% endif %}
+        {% if c.voice %}
+            <audio controls src="{{ c.voice }}"></audio>
+        {% endif %}
+
+        <hr>
+    {% endfor %}
+
 </div>
 </body>
 </html>
