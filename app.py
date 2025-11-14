@@ -4,6 +4,7 @@ import logging
 import requests
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
+import json
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -13,49 +14,67 @@ OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+LOG_DIR = "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+
 # -----------------------------
-# 天気
+# 天気取得（改善版）
 # -----------------------------
 def get_weather(user_text="東京"):
     try:
         import re
         city_match = re.search(r"(.+?)の天気", user_text)
-        city = city_match.group(1) if city_match else "東京"
+        city = city_match.group(1) if city_match else user_text
 
         url = (
-            f"http://api.openweathermap.org/data/2.5/weather"
+            "https://api.openweathermap.org/data/2.5/weather"
             f"?q={city}&appid={OPENWEATHER_API_KEY}"
-            f"&units=metric&lang=ja"
+            "&units=metric&lang=ja"
         )
         res = requests.get(url, timeout=6)
         data = res.json()
 
         if data.get("cod") != 200:
-            return f"{city}の天気は見つからなかったよ。"
+            return f"{city}の天気は分からなかったよ。"
 
         temp = data["main"]["temp"]
         desc = data["weather"][0]["description"]
         return f"今の{city}の天気は{desc}、気温は{temp:.1f}度だよ！"
 
-    except:
+    except Exception:
         return "天気情報を取得できなかったよ。"
 
+
 # -----------------------------
-# ルート
+# ページ
 # -----------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
+@app.route("/logs")
+def logs():
+    files = sorted(os.listdir(LOG_DIR))
+    files = [f for f in files if not f.startswith(".")]
+    return render_template("logs.html", files=files)
+
+
 # -----------------------------
-# 会話
+# 会話処理
 # -----------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
     user_text = data.get("message", "").strip()
 
-    # --- 特別対応 ---
+    # ログ日付フォルダを自動生成
+    day = datetime.datetime.now().strftime("%Y-%m-%d")
+    folder = os.path.join(LOG_DIR, day)
+    os.makedirs(folder, exist_ok=True)
+
+    # --------------- 特殊処理 ---------------
     if "天気" in user_text:
         reply_text = get_weather(user_text)
 
@@ -64,25 +83,25 @@ def talk():
         reply_text = f"今は{now}だよ！"
 
     else:
-        prompt = (
-            "あなたは明るく優しい孫のゆうくんです。"
-            "会話に応じて自然に答えてください。"
-            "呼称として「おばあちゃん」「おじいちゃん」は使わない。"
-            "同じ返事は繰り返さず、自然にバリエーションをつけること。"
+        system_prompt = (
+            "あなたは明るく優しい孫のゆうくんです。\n"
+            "利用者に自然で丁寧に返答し、60〜80代向けに優しく話します。\n"
+            "呼称として「おばあちゃん」「おじいちゃん」は使わない。\n"
         )
 
         res = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": prompt},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_text}
             ]
         )
         reply_text = res.choices[0].message.content.strip()
 
-    # ------------------- TTS -------------------
+    # --------------- 音声生成 ---------------
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    audio_path = f"static/output_{ts}.mp3"
+    audio_file = f"output_{ts}.mp3"
+    audio_path = f"static/{audio_file}"
 
     speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
@@ -92,16 +111,16 @@ def talk():
     with open(audio_path, "wb") as f:
         f.write(speech.read())
 
-    # ------------------- 会話ログ保存（音声つき） -------------------
-    today = datetime.datetime.now().strftime("%Y-%m-%d")
-    save_dir = os.path.join("logs", today)
-    os.makedirs(save_dir, exist_ok=True)
+    # --------------- ログ保存（音声も） ---------------
+    log_json = {
+        "time": ts,
+        "user": user_text,
+        "reply": reply_text,
+        "audio": audio_file
+    }
 
-    log_file = os.path.join(save_dir, "log.txt")
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"【あなた】{user_text}\n")
-        f.write(f"【ゆうくん】{reply_text}\n")
-        f.write(f"（音声）/{audio_path}\n\n")
+    with open(os.path.join(folder, f"{ts}.json"), "w", encoding="utf-8") as f:
+        json.dump(log_json, f, ensure_ascii=False, indent=2)
 
     return jsonify({
         "reply": reply_text,
