@@ -9,86 +9,85 @@
 
 <body>
     <div class="container">
-
         <h1>おはなし横丁</h1>
-        <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
+        <p>ゆうくんと、楽しく話す時間だよ。</p>
 
         <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
 
         <div class="buttons">
-            <button id="voiceBtn" class="voice">🎤 音声入力</button>
+            <button id="voiceBtn">🎤 音声入力</button>
             <button id="sendBtn">話しかける</button>
         </div>
 
-        <p class="tips">
-            👉 音声入力は 5 秒話すと自動で送信されるよ。<br>
-            👉 下のカレンダーから過去の会話も見られるよ。
-        </p>
-
         <div id="responseArea"></div>
 
-        <audio id="voicePlayer" controls preload="auto" style="width: 100%; margin-top: 20px; display:none;"></audio>
+        <audio id="voicePlayer" controls preload="auto"
+               style="width: 100%; margin-top: 20px; display:none;"></audio>
 
-        <p style="margin-top:30px;">
-            <a href="/logs">📁 過去の会話カレンダーを見る</a>
+        <p style="margin-top:25px;">
+            👉 <a href="/logs">過去の会話カレンダーを見る</a>
         </p>
     </div>
 
-    <script>
-    let recognition;
-    let timer = null;
+<script>
+let recognition;
+let autoSendTimer = null;
 
-    try {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SR();
-        recognition.lang = "ja-JP";
-        recognition.interimResults = true;
+try {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = "ja-JP";
+    recognition.interimResults = true;
 
-        recognition.onstart = () => {
-            document.getElementById("voiceBtn").classList.add("recording");
-        };
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        document.getElementById("userInput").value = text;
 
-        recognition.onend = () => {
-            document.getElementById("voiceBtn").classList.remove("recording");
-        };
-
-        recognition.onresult = (e) => {
-            const text = e.results[0][0].transcript;
-            document.getElementById("userInput").value = text;
-
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(() => { sendMessage(); }, 5000);
-        };
-    } catch(e) {}
-
-    document.getElementById("voiceBtn").onclick = () => {
-        try { recognition.start(); } catch(e){}
+        if (autoSendTimer) clearTimeout(autoSendTimer);
+        autoSendTimer = setTimeout(() => {
+            sendMessage();
+        }, 5000);
     };
+} catch (e) {
+    console.warn("[音声認識エラー]", e);
+}
 
-    document.getElementById("sendBtn").onclick = () => sendMessage();
-
-    function sendMessage() {
-        const text = document.getElementById("userInput").value.trim();
-        if (!text) return;
-
-        document.getElementById("responseArea").innerHTML = "ゆうくんが考え中…";
-
-        fetch("/talk", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ message: text })
-        })
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("responseArea").innerHTML = data.reply;
-
-            const p = document.getElementById("voicePlayer");
-            p.style.display = "block";
-            p.src = data.audio_url + "?t=" + Date.now();
-            p.load();
-            setTimeout(() => p.play(), 120);
-        });
+document.getElementById("voiceBtn").onclick = () => {
+    try {
+        recognition.start();
+    } catch (e) {
+        console.warn("音声認識開始できません:", e);
     }
-    </script>
+};
+
+document.getElementById("sendBtn").onclick = () => {
+    sendMessage();
+};
+
+function sendMessage() {
+    const text = document.getElementById("userInput").value.trim();
+    if (!text) return;
+
+    document.getElementById("responseArea").innerHTML = "ゆうくんが考え中…";
+
+    fetch("/talk", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ message: text })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("responseArea").innerHTML = data.reply;
+
+        const player = document.getElementById("voicePlayer");
+        player.style.display = "block";
+        player.src = data.audio_url + "?t=" + Date.now();
+        player.load();
+        setTimeout(() => player.play(), 150);
+    });
+
+    // 入力欄は消さない（あなたの希望）
+}
+</script>
 </body>
 </html>
