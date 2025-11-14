@@ -24,7 +24,8 @@
         <div id="responseArea"></div>
 
         <!-- 音声プレイヤー -->
-        <audio id="voicePlayer" controls preload="auto" style="width: 100%; margin-top: 20px; display:none;"></audio>
+        <audio id="voicePlayer" controls preload="auto"
+               style="width: 100%; margin-top: 20px; display:none;"></audio>
 
         <p style="margin-top:30px;">
             <a href="./logs">🗂 過去の会話カレンダーを見る</a>
@@ -34,81 +35,93 @@
     <script>
     /* ==========================================================
        🎤 音声入力（録音 → 自動送信 → 5秒固定）
+       UI は一切変更せず内部処理だけ安定化
     ========================================================== */
-    let recognition;
+    let recognition = null;
     let autoSendTimer = null;
 
     try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const SpeechRecognition =
+            window.SpeechRecognition || window.webkitSpeechRecognition;
+
         recognition = new SpeechRecognition();
         recognition.lang = "ja-JP";
         recognition.interimResults = true;
 
         recognition.onresult = (event) => {
             const text = event.results[0][0].transcript;
+
+            // 入力欄に残す
             document.getElementById("userInput").value = text;
 
-            // 前のタイマーがあればリセット
+            // 既存タイマー解除
             if (autoSendTimer) clearTimeout(autoSendTimer);
 
-            // 🔥 発話が変わるたびに 5 秒後に自動送信
+            // 5秒後に自動送信
             autoSendTimer = setTimeout(() => {
                 sendMessage();
             }, 5000);
         };
-    } catch (e) {
-        console.warn("[音声認識エラー]", e);
+
+    } catch (err) {
+        console.warn("音声認識が利用できないブラウザです:", err);
     }
 
-    // 音声ボタン
     document.getElementById("voiceBtn").onclick = () => {
-        try {
-            recognition.start();
-        } catch (e) {
-            console.warn("音声認識開始できません:", e);
+        if (recognition) {
+            try {
+                recognition.start();
+            } catch (e) {
+                console.warn("音声認識開始エラー:", e);
+            }
         }
     };
 
     /* ==========================================================
-       ✉️ 送信処理
+       ✉️ メッセージ送信処理（内部安定化）
     ========================================================== */
     document.getElementById("sendBtn").onclick = () => {
         sendMessage();
     };
 
-    function sendMessage() {
+    async function sendMessage() {
         const text = document.getElementById("userInput").value.trim();
         if (!text) return;
 
-        document.getElementById("responseArea").innerHTML = "ゆうくんが考え中…";
+        const responseArea = document.getElementById("responseArea");
+        responseArea.innerHTML = "ゆうくんが考え中…";
 
-        fetch("/talk", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ message: text })
-        })
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("responseArea").innerHTML = data.reply;
+        try {
+            const res = await fetch("/talk", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text })
+            });
 
+            const data = await res.json();
+
+            // テキスト返答表示
+            responseArea.innerHTML = data.reply;
+
+            // 音声プレイヤー再生
             const player = document.getElementById("voicePlayer");
             player.style.display = "block";
             player.src = data.audio_url + "?t=" + Date.now();
 
-            /* 🔥 音切れ防止：load → 少し待って → play */
+            // 音途切れ防止：load → 少し待ってから play
             player.load();
             setTimeout(() => {
                 player.play().catch(e => console.warn("再生エラー:", e));
-            }, 120);
-        })
-        .catch(err => {
-            document.getElementById("responseArea").innerHTML =
-                "ごめんね、なんだかエラーが起きたみたい。もう一度言ってね。";
-            console.error(err);
-        });
+            }, 150);
 
-        document.getElementById("userInput").value = "";
+        } catch (err) {
+            responseArea.innerHTML =
+                "ごめんね、うまく返事ができなかったみたい。もう一度お願いしてもいい？";
+
+            console.error("通信エラー:", err);
+        }
     }
     </script>
+
 </body>
 </html>
