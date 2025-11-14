@@ -5,42 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>会話カレンダー</title>
     <link rel="stylesheet" href="/static/style.css">
-    <style>
-        .log-card {
-            background: white;
-            padding: 20px;
-            border-radius: 16px;
-            width: 300px;
-            margin: 40px auto;
-            text-align: center;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.1);
-        }
-        ul { list-style: none; padding: 0; margin-top: 20px; }
-        li { margin: 14px 0; }
-        a {
-            color: #4a72ff;
-            text-decoration: none;
-            font-size: 18px;
-        }
-        a:hover { text-decoration: underline; }
-    </style>
 </head>
 
 <body>
-    <div class="log-card">
-        <h2>📅 会話カレンダー</h2>
+<div class="container">
+    <h1>📅 会話カレンダー</h1>
 
-        <p><a href="/">🏠 ホームに戻る</a></p>
+    <p><a href="/">🏡 ホームに戻る</a></p>
 
-        {% if folders %}
-            <ul>
-                {% for f in folders %}
-                    <li><a href="/logs/{{ f }}">{{ f }}</a></li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>まだ会話ログはありません。</p>
-        {% endif %}
-    </div>
+    {% if not files %}
+        <p>まだ会話ログはありません。</p>
+    {% else %}
+        <ul>
+        {% for f in files %}
+            <li><a href="/logs/{{f}}">{{f}}</a></li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</div>
 </body>
 </html>
