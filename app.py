@@ -4,8 +4,7 @@ from datetime import datetime
 import requests
 from flask import Flask, request, jsonify, render_template
 
-app = Flask(__name__, static_folder='static', template_folder='templates')
-
+app = Flask(__name__)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
@@ -44,7 +43,12 @@ def ai_reply(user_text):
         "messages": [
             {
                 "role": "system",
-                "content": "あなたは優しい孫のゆうくんとして丁寧語で話します。"
+                "content": (
+                    "あなたは優しい孫のゆうくんとして丁寧語で話します。"
+                    "相手の呼び方は『あなた』で統一します。"
+                    "『おじいちゃん』『おばあちゃん』などの家族呼称は絶対に使いません。"
+                    "相手から要望があれば、その呼び方に従います。"
+                )
             },
             {"role": "user", "content": user_text}
         ]
@@ -55,7 +59,7 @@ def ai_reply(user_text):
 
 
 # -------------------------
-# TTS（mp3保存）
+# TTS（音声生成）
 # -------------------------
 def generate_voice(text, filename):
     url = "https://api.openai.com/v1/audio/speech"
@@ -85,48 +89,6 @@ def chat_page():
 
 
 # -------------------------
-# 過去ログ（日付一覧）
-# -------------------------
-@app.route("/logs")
-def logs():
-    if not os.path.exists("logs"):
-        os.makedirs("logs")
-
-    days = [d for d in sorted(os.listdir("logs")) if not d.startswith(".")]
-    return render_template("logs.html", days=days)
-
-
-# -------------------------
-# 日別ログ
-# -------------------------
-@app.route("/logs/<day>")
-def log_day(day):
-    folder = f"logs/{day}"
-    entries = []
-
-    if not os.path.exists(folder):
-        return f"{day} のログがありません"
-
-    for fname in sorted(os.listdir(folder)):
-        if fname.endswith(".json"):
-            base = fname.replace(".json", "")
-            json_path = f"{folder}/{base}.json"
-            mp3_path = f"{folder}/{base}.mp3"
-
-            with open(json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            entries.append({
-                "id": base,
-                "user": data["user"],
-                "bot": data["bot"],
-                "audio": f"/{mp3_path}"
-            })
-
-    return render_template("log_view.html", day=day, entries=entries)
-
-
-# -------------------------
 # 会話API
 # -------------------------
 @app.route("/api/chat", methods=["POST"])
@@ -134,17 +96,13 @@ def chat_api():
     data = request.json
     user_text = data.get("message", "").strip()
 
-    # --- 特殊処理 ---
+    # 特殊処理
     if "天気" in user_text:
         reply = get_weather(user_text)
-    elif "何時" in user_text or "時間" in user_text:
-        reply = f"今は {datetime.now().strftime('%H時%M分')} ですよ。"
-    elif "今日" in user_text and "日" in user_text:
-        reply = f"今日は {datetime.now().strftime('%Y年%m月%d日')} ですよ。"
     else:
         reply = ai_reply(user_text)
 
-    # --- 保存処理 ---
+    # 保存処理
     day = datetime.now().strftime("%Y-%m-%d")
     if not os.path.exists(f"logs/{day}"):
         os.makedirs(f"logs/{day}")
@@ -154,10 +112,8 @@ def chat_api():
     mp3_path = f"logs/{day}/{conv_id}.mp3"
     json_path = f"logs/{day}/{conv_id}.json"
 
-    # 音声生成
     generate_voice(reply, mp3_path)
 
-    # JSON保存
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"user": user_text, "bot": reply}, f, ensure_ascii=False)
 
