@@ -1,119 +1,103 @@
 import os
-import json
-from flask import Flask, request, jsonify, render_template
-from datetime import datetime
-from openai import OpenAI
+import datetime
+import logging
 import requests
+from flask import Flask, render_template, request, jsonify
+from openai import OpenAI
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
-LOG_FILE = "logs.json"
+# -----------------------------
+# 天気
+# -----------------------------
+def get_weather(user_text="東京"):
+    try:
+        import re
+        city_match = re.search(r"(.+?)の天気", user_text)
+        city = city_match.group(1) if city_match else "東京"
 
+        url = (
+            f"http://api.openweathermap.org/data/2.5/weather"
+            f"?q={city}&appid={OPENWEATHER_API_KEY}"
+            f"&units=metric&lang=ja"
+        )
+        res = requests.get(url, timeout=6)
+        data = res.json()
+
+        if data.get("cod") != 200:
+            return f"{city}の天気は見つからなかったよ。"
+
+        temp = data["main"]["temp"]
+        desc = data["weather"][0]["description"]
+        return f"今の{city}の天気は{desc}、気温は{temp:.1f}度だよ！"
+
+    except:
+        return "天気情報を取得できなかったよ。"
 
 # -----------------------------
-# ログ保存
-# -----------------------------
-def save_log(user, reply, audio_url):
-    logs = []
-    if os.path.exists(LOG_FILE):
-        with open(LOG_FILE, "r", encoding="utf-8") as f:
-            logs = json.load(f)
-
-    logs.append({
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "user": user,
-        "reply": reply,
-        "audio_url": audio_url
-    })
-
-    with open(LOG_FILE, "w", encoding="utf-8") as f:
-        json.dump(logs, f, ensure_ascii=False, indent=2)
-
-
-# -----------------------------
-# Web UI
+# ルーティング
 # -----------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
-@app.route("/logs")
-def view_logs():
-    if not os.path.exists(LOG_FILE):
-        return "まだログはありません。"
-
-    with open(LOG_FILE, "r", encoding="utf-8") as f:
-        logs = json.load(f)
-
-    html = "<h2>会話ログ</h2>"
-    for l in logs:
-        html += f"<p><b>{l['time']} / YOU:</b> {l['user']}<br>"
-        html += f"<b>Yukun:</b> {l['reply']}<br>"
-        if l["audio_url"]:
-            html += f"<audio controls src='{l['audio_url']}'></audio></p><hr>"
-    return html
-
-
 # -----------------------------
-# Speech-to-Text
-# -----------------------------
-@app.route("/voice", methods=["POST"])
-def voice_to_text():
-    audio = request.files["audio"]
-
-    text = client.audio.transcriptions.create(
-        model="gpt-4o-mini-transcribe",
-        file=audio
-    ).text
-
-    return jsonify({"text": text})
-
-
-# -----------------------------
-# 会話（本体）
+# 会話API
 # -----------------------------
 @app.route("/talk", methods=["POST"])
 def talk():
-    user_text = request.json.get("user_text", "")
+    data = request.json
+    user_text = data.get("message", "").strip()
 
-    # --- GPT 返答 ---
-    gpt = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "あなたは優しいAIのゆうくん。語尾はやわらかい。返答は短め。"},
-            {"role": "user", "content": user_text}
-        ],
-        temperature=0.6
-    )
+    # ------------------- 特殊対応 -------------------
+    if "天気" in user_text:
+        reply_text = get_weather(user_text)
 
-    reply = gpt.choices[0].message["content"]
+    elif any(k in user_text for k in ["時間", "何時"]):
+        now = datetime.datetime.now().strftime("%H時%M分")
+        reply_text = f"今は{now}だよ！"
 
-    # --- TTS ---
+    else:
+        prompt = (
+            "あなたは明るく優しい孫のゆうくんです。"
+            "利用者に自然で丁寧に返答し、話題に合わせて回答を変えます。"
+            "60〜80代向けにゆっくり優しく話してください。"
+            "呼称として「おばあちゃん」「おじいちゃん」は使わない。"
+            "同じ返答は繰り返さず、会話の内容に応じて変化させてください。"
+        )
+
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_text}
+            ]
+        )
+        reply_text = res.choices[0].message.content.strip()
+
+    # ------------------- TTS（ブラウザ用・毎回ユニーク） -------------------
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    audio_path = f"static/output_{ts}.mp3"
+
     speech = client.audio.speech.create(
         model="gpt-4o-mini-tts",
-        voice="alloy",
-        input=reply
+        voice="verse",
+        input=reply_text
     )
-
-    audio_path = f"static/{datetime.now().timestamp()}.mp3"
-    speech.stream_to_file(audio_path)
-    audio_url = "/" + audio_path
-
-    # --- ログ保存 ---
-    save_log(user_text, reply, audio_url)
+    with open(audio_path, "wb") as f:
+        f.write(speech.read())
 
     return jsonify({
-        "reply": reply,
-        "audio_url": audio_url
+        "reply": reply_text,
+        "audio_url": "/" + audio_path
     })
 
 
-# -----------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
