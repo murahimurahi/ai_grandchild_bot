@@ -2,34 +2,31 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>おはなし横丁 - チャット</title>
+    <title>おはなし横丁</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script defer src="/static/chat.js"></script>
 </head>
 
 <body>
-    <div class="chat-wrapper">
+<div class="chat-container">
 
-        <h1 class="chat-title">おはなし横丁</h1>
-        <p class="chat-subtitle">ゆうくんと、楽しく話す時間だよ。</p>
+    <h2 class="title">おはなし横丁</h2>
+    <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
 
-        <div id="chatWindow" class="chat-window"></div>
+    <!-- 吹き出しUI -->
+    <div id="messages" class="messages"></div>
 
-        <div class="input-row">
-            <button id="voiceBtn" class="voice-btn">🎤 音声入力</button>
-            <button id="sendBtn" class="send-btn">話しかける</button>
-        </div>
+    <!-- 音声ログ -->
+    <div id="voice-logs" class="voice-logs"></div>
 
-        <p class="hint">
-            📌 音声入力は5秒話すと自動で送信されるよ。<br>
-            📁 下のカレンダーから過去の会話も見られるよ。
-        </p>
-
-        <p><a href="/logs" class="log-link">📂 過去の会話カレンダーを見る</a></p>
-
-        <div id="voiceLogs" class="voice-log-box"></div>
-
+    <!-- 入力＆ボタン -->
+    <div class="input-row">
+        <input id="textInput" type="text" placeholder="メッセージを入力してね">
+        <button id="sendBtn">送信</button>
     </div>
 
-    <script src="/static/chat.js"></script>
+    <button id="voiceBtn" class="voice-button">🎤 音声入力</button>
+
+</div>
 </body>
 </html>
