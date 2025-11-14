@@ -5,37 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>おはなし横丁</title>
     <link rel="stylesheet" href="/static/style.css">
-
-    <style>
-        /* 🎤 音声入力ボタンが録音中に光るアニメーション */
-        #voiceBtn.recording {
-            background-color: #4da3ff !important;
-            color: white;
-            animation: pulse 1s infinite;
-        }
-        @keyframes pulse {
-            0% { box-shadow: 0 0 4px #4da3ff; }
-            50% { box-shadow: 0 0 12px #4da3ff; }
-            100% { box-shadow: 0 0 4px #4da3ff; }
-        }
-    </style>
 </head>
 
 <body>
     <div class="container">
         <h1>おはなし横丁</h1>
-        <p>ゆうくんと、楽しく話す時間です。</p>
+        <p>ゆうくんと、楽しく話す時間だよ。</p>
 
-        <!-- 使い方説明 -->
-        <div style="background:#f7f7ff; padding:10px 15px; border-radius:8px; margin-bottom:15px; line-height:1.6;">
-            <strong>📘 使い方</strong><br>
-            ・話したい内容を入力するか、<strong>音声入力</strong>のボタンを押して話せます。<br>
-            ・音声入力中はボタンが光ります。話し終えると約5秒で自動送信されます。<br>
-            ・返信がくると音声で読み上げます。<br>
-            ・過去の会話は「会話カレンダー」で見返せます。
-        </div>
-
-        <!-- 入力欄 -->
         <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
 
         <div class="buttons">
@@ -43,30 +19,43 @@
             <button id="sendBtn">話しかける</button>
         </div>
 
-        <!-- 返事 -->
+        <p class="howto">
+            👉 音声入力は 5 秒話すと自動で送信されるよ。<br>
+            👉 下のカレンダーから過去の会話も見られるよ。
+        </p>
+
         <div id="responseArea"></div>
 
-        <!-- 音声プレイヤー -->
-        <audio id="voicePlayer" controls preload="auto"
-               style="width: 100%; margin-top: 20px; display:none;"></audio>
+        <audio id="voicePlayer" controls preload="auto" style="width: 100%; margin-top: 20px; display:none;"></audio>
 
-        <p style="margin-top:30px;">
-            <a href="./logs">🗂 過去の会話カレンダーを見る</a>
+        <p style="margin-top:25px;">
+            <a href="/logs">📅 過去の会話カレンダーを見る</a>
         </p>
     </div>
 
     <script>
     /* ==========================================================
-       🎤 音声入力（5秒固定／録音中ボタン光る）
+       🎤 音声入力（5秒後に自動送信）
     ========================================================== */
     let recognition;
     let autoSendTimer = null;
 
     try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SR();
         recognition.lang = "ja-JP";
         recognition.interimResults = true;
+
+        recognition.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            document.getElementById("userInput").value = text;
+
+            if (autoSendTimer) clearTimeout(autoSendTimer);
+
+            autoSendTimer = setTimeout(() => {
+                sendMessage();
+            }, 5000);
+        };
 
         recognition.onstart = () => {
             document.getElementById("voiceBtn").classList.add("recording");
@@ -76,34 +65,15 @@
             document.getElementById("voiceBtn").classList.remove("recording");
         };
 
-        recognition.onresult = (event) => {
-            const text = event.results[0][0].transcript;
-            document.getElementById("userInput").value = text;
-
-            if (autoSendTimer) clearTimeout(autoSendTimer);
-
-            autoSendTimer = setTimeout(() => {
-                sendMessage();
-            }, 5000);
-        };
-    } catch (e) {
-        console.warn("[音声認識エラー]", e);
+    } catch (err) {
+        console.warn("音声認識エラー:", err);
     }
 
     document.getElementById("voiceBtn").onclick = () => {
-        try {
-            recognition.start();
-        } catch (e) {
-            console.warn("音声認識開始できません:", e);
-        }
+        try { recognition.start(); } catch (e) {}
     };
 
-    /* ==========================================================
-       ✉️ 送信処理
-    ========================================================== */
-    document.getElementById("sendBtn").onclick = () => {
-        sendMessage();
-    };
+    document.getElementById("sendBtn").onclick = () => sendMessage();
 
     function sendMessage() {
         const text = document.getElementById("userInput").value.trim();
@@ -124,19 +94,10 @@
             player.style.display = "block";
             player.src = data.audio_url + "?t=" + Date.now();
             player.load();
-
-            setTimeout(() => {
-                player.play().catch(e => console.warn("再生エラー:", e));
-            }, 120);
-        })
-        .catch(err => {
-            document.getElementById("responseArea").innerHTML =
-                "ごめんね、なんだかエラーが起きたみたい。もう一度言ってね。";
-            console.error(err);
+            setTimeout(() => player.play(), 120);
         });
 
-        // 入力内容は残す（あなたの希望）
-        // document.getElementById("userInput").value = "";
+        document.getElementById("userInput").value = "";
     }
     </script>
 </body>
