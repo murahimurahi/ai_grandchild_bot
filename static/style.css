@@ -1,98 +1,21 @@
-/* 全体背景 */
-body {
-    margin: 0;
-    padding: 0;
-    background: #f5f5f5;
-    font-family: "游ゴシック", sans-serif;
-}
-
-/* 中央のチャットコンテナ */
-.chat-container {
-    width: 90%;
-    max-width: 480px;
-    margin: 30px auto;
-    background: #fff;
-    padding: 20px;
-    border-radius: 14px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-}
-
-/* ヘッダー */
-.chat-header {
-    text-align: center;
-    margin-bottom: 15px;
-}
-
-.chat-header h2 {
-    margin: 0;
-    font-size: 22px;
-}
-
-/* メッセージ表示欄 */
-.messages {
-    height: 300px;
-    overflow-y: auto;
-    background: #fafafa;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-}
-
-.message {
-    margin-bottom: 12px;
-    background: #fff;
-    padding: 10px;
-    border-radius: 8px;
-    border-left: 4px solid #0078ff;
-}
-
-/* 入力エリア */
-.input-area {
-    display: flex;
-    margin-top: 15px;
-}
-
-.input-area input {
-    flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 16px;
-}
-
-.input-area button {
-    padding: 11px 18px;
-    margin-left: 8px;
-    border: none;
+/* あなた（右） */
+.bubble-right {
+    max-width: 70%;
     background: #0078ff;
     color: white;
-    font-size: 16px;
-    border-radius: 8px;
-}
-
-/* 音声ボタン */
-.voice-button {
-    width: 100%;
-    margin-top: 12px;
-    padding: 12px;
-    background: #ffe08a;
-    border-radius: 10px;
-    border:none;
-    font-size: 18px;
-}
-
-/* 音声ログエリア（各会話の音声が並ぶ） */
-.voice-logs {
-    margin-top: 20px;
     padding: 10px;
-    background: #fff6e5;
-    border: 1px solid #e6c88c;
-    border-radius: 12px;
-    max-height: 200px;
-    overflow-y: auto;
+    margin: 8px 0;
+    border-radius: 14px 14px 0 14px;
+    margin-left: auto;
 }
 
-.voice-log-item {
-    width: 100%;
-    margin-bottom: 10px;
+/* AI（左） */
+.bubble-left {
+    max-width: 70%;
+    background: #ffffff;
+    color: black;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 14px 14px 14px 0;
+    border: 1px solid #ddd;
 }
