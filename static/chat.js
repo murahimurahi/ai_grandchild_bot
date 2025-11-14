@@ -1,40 +1,30 @@
-const messages = document.getElementById("messages");
-const voiceLogs = document.getElementById("voice-logs");
+const messagesDiv = document.getElementById("messages");
 const textInput = document.getElementById("textInput");
 const sendBtn = document.getElementById("sendBtn");
 const voiceBtn = document.getElementById("voiceBtn");
+const voiceLogArea = document.getElementById("voice-log-area");
 
-// ----------------------
-// メッセージ描画
-// ----------------------
+// --------------------------
+// メッセージ追加
+// --------------------------
 function addMessage(sender, text) {
     const div = document.createElement("div");
     div.className = "message";
     div.innerHTML = `<strong>${sender}：</strong> ${text}`;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-// ----------------------
-// 音声ログを追加
-// ----------------------
-function addVoice(url) {
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.src = url;
-    voiceLogs.appendChild(audio);
-    voiceLogs.scrollTop = voiceLogs.scrollHeight;
-}
-
-// ----------------------
-// サーバー送信
-// ----------------------
+// --------------------------
+// 送信処理
+// --------------------------
 function sendText(text) {
     addMessage("あなた", text);
+    textInput.value = "";
 
     fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify({ message: text })
     })
     .then(res => res.json())
@@ -42,39 +32,39 @@ function sendText(text) {
         addMessage("ゆうくん", data.reply);
 
         if (data.voice_url) {
-            addVoice(data.voice_url);
+            const audio = document.createElement("audio");
+            audio.controls = true;
+            audio.src = data.voice_url;
+            voiceLogArea.appendChild(audio);
         }
     });
-
-    textInput.value = "";
 }
 
-// 送信ボタン
 sendBtn.onclick = () => {
-    const text = textInput.value.trim();
-    if (text !== "") sendText(text);
+    if (textInput.value.trim() !== "") {
+        sendText(textInput.value.trim());
+    }
 };
 
 textInput.addEventListener("keydown", e => {
     if (e.key === "Enter") sendBtn.click();
 });
 
-// ----------------------
-// 音声認識
-// ----------------------
-let recognition = null;
+// --------------------------
+// 音声入力（手動）
+// --------------------------
+if ('webkitSpeechRecognition' in window) {
+    const rec = new webkitSpeechRecognition();
+    rec.lang = "ja-JP";
+    rec.continuous = false;
+    rec.interimResults = false;
 
-if ("webkitSpeechRecognition" in window) {
-    recognition = new webkitSpeechRecognition();
-    recognition.lang = "ja-JP";
-    recognition.continuous = false;
+    voiceBtn.onclick = () => {
+        rec.start();
+    };
 
-    recognition.onresult = function(event) {
+    rec.onresult = function(event) {
         const text = event.results[0][0].transcript;
         sendText(text);
     };
 }
-
-voiceBtn.onclick = () => {
-    if (recognition) recognition.start();
-};
