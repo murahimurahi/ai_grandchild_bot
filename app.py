@@ -4,7 +4,8 @@ from datetime import datetime
 import requests
 from flask import Flask, request, jsonify, render_template
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', template_folder='templates')
+
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
