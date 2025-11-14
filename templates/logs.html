@@ -1,52 +1,26 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>会話カレンダー | おはなし横丁</title>
-  <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <title>会話カレンダー</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="logpage">
-  <div class="container">
-    <h1>📆 会話カレンダー</h1>
+<body>
+
+<div class="container log-container">
+    <h2>📅 会話カレンダー</h2>
     <p><a href="/">🏠 ホームに戻る</a></p>
 
-    {% if logs %}
-      <div class="calendar-grid">
-        {% for log in logs %}
-          <div class="calendar-cell" onclick="toggleDay('{{ log.date }}')">
-            {{ log.date }}
-          </div>
-        {% endfor %}
-      </div>
-
-      {% for log in logs %}
-        <div id="day-{{ log.date }}" class="log-day" style="display:none;">
-          <h2>🗓 {{ log.date }}</h2>
-          {% for entry in log.entries %}
-            <div class="log-entry">
-              <p><strong>あなた：</strong> {{ entry.user }}</p>
-              <p><strong>ゆうくん：</strong> {{ entry.yuukun }}</p>
-              {% if entry.audio_file %}
-                <audio controls src="/logs_audio/{{ log.date }}/{{ entry.audio_file }}"></audio>
-              {% endif %}
-              <hr>
-            </div>
-          {% endfor %}
-        </div>
-      {% endfor %}
+    {% if dates %}
+        <ul>
+            {% for d in dates %}
+                <li><a href="/logs/{{ d }}">{{ d }}</a></li>
+            {% endfor %}
+        </ul>
     {% else %}
-      <p>まだ会話ログはありません。</p>
+        <p>まだ会話ログはありません。</p>
     {% endif %}
-  </div>
+</div>
 
-  <script>
-  function toggleDay(date) {
-    const section = document.getElementById(`day-${date}`);
-    const all = document.querySelectorAll('.log-day');
-    all.forEach(s => s.style.display = 'none');
-    section.style.display = 'block';
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-  </script>
 </body>
 </html>
