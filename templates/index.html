@@ -1,118 +1,6 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>おはなし横丁</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <style>
-        body {
-            font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
-            background: #f6f6f6;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-        }
-
-        .container {
-            max-width: 820px;
-            margin: 40px auto;
-            padding: 40px;
-            background: white;
-            border-radius: 18px;
-            box-shadow: 0px 4px 14px rgba(0,0,0,0.1);
-        }
-
-        h1 {
-            font-size: 34px;
-            margin-bottom: 10px;
-            font-weight: 700;
-            color: #3a66ff;
-        }
-
-        textarea {
-            width: 90%;
-            height: 80px;
-            padding: 12px;
-            border-radius: 10px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-            resize: none;
-        }
-
-        button {
-            padding: 10px 26px;
-            margin: 14px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        #talkBtn {
-            background: #ffb84d;
-            color: white;
-        }
-
-        #micBtn {
-            background: #7bb3ff;
-            color: white;
-        }
-
-        .reply-box {
-            margin-top: 30px;
-            font-size: 18px;
-            line-height: 1.6;
-        }
-
-        .log-link {
-            color: #3366cc;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-top: 20px;
-            display: inline-block;
-        }
-
-        .log-item {
-            text-align: left;
-            padding: 10px;
-            background: #f0f4ff;
-            border-radius: 10px;
-            margin-bottom: 10px;
-        }
-
-        audio {
-            margin-top: 8px;
-            width: 100%;
-        }
-    </style>
-</head>
-
-<body>
-
-    <div class="container">
-        <h1>おはなし横丁</h1>
-        <p>ゆうくんと、やさしく話せる時間だよ。</p>
-
-        <textarea id="userInput" placeholder="思ったことを言ってみてね"></textarea>
-
-        <br>
-        <button id="micBtn">🎙 音声入力</button>
-        <button id="talkBtn">話しかける</button>
-
-        <div class="reply-box">
-            <div id="reply"></div>
-            <audio id="voice" controls></audio>
-        </div>
-
-        <div class="log-link" onclick="showLogs()">📘 過去の会話カレンダーを見る</div>
-
-        <div id="logs-box" style="margin-top:30px;"></div>
-    </div>
-
 <script>
 /* ---------------------------------------------------
-   ローカル保存：テキスト＋音声URL
+   ローカルログ保存（テキスト＋音声URL）
 --------------------------------------------------- */
 function saveLog(userText, botText, audioUrl) {
     const logs = JSON.parse(localStorage.getItem("logs") || "[]");
@@ -126,6 +14,72 @@ function saveLog(userText, botText, audioUrl) {
 
     localStorage.setItem("logs", JSON.stringify(logs));
 }
+
+/* ---------------------------------------------------
+   音声入力 → 自動送信（7秒 or 15秒）
+--------------------------------------------------- */
+let recognition;
+
+try {
+    const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    recognition = new SpeechRecognition();
+    recognition.lang = "ja-JP";
+    recognition.interimResults = false;
+
+    recognition.onresult = function(e) {
+        const text = e.results[0][0].transcript;
+        document.getElementById("userInput").value = text;
+
+        // 短文 → 7秒 / 長文 → 15秒
+        let delay = text.length <= 30 ? 7000 : 15000;
+
+        document.getElementById("reply").innerText =
+            `聞こえたよ。「${text}」\n少し待っててね…`;
+
+        setTimeout(() => {
+            autoSend(text);
+        }, delay);
+    };
+
+} catch (e) {
+    alert("音声入力に対応していないブラウザです。");
+}
+
+document.getElementById("micBtn").onclick = () => {
+    if (recognition) recognition.start();
+};
+
+/* ---------------------------------------------------
+   自動送信関数
+--------------------------------------------------- */
+async function autoSend(text) {
+    const res = await fetch("/talk", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: text})
+    });
+
+    const data = await res.json();
+
+    saveLog(text, data.reply, data.audio_url);
+
+    document.getElementById("reply").innerText = data.reply;
+
+    const audio = document.getElementById("voice");
+    audio.src = data.audio_url;
+    audio.play();
+}
+
+/* ---------------------------------------------------
+   手動送信
+--------------------------------------------------- */
+document.getElementById("talkBtn").onclick = () => {
+    const text = document.getElementById("userInput").value.trim();
+    if (!text) return;
+    autoSend(text);
+};
 
 /* ---------------------------------------------------
    ログ表示
@@ -148,56 +102,4 @@ function showLogs() {
         </div>
     `).join("");
 }
-
-
-/* ---------------------------------------------------
-   音声入力
---------------------------------------------------- */
-let recognition;
-try {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP";
-
-    recognition.onresult = function(e) {
-        document.getElementById("userInput").value = e.results[0][0].transcript;
-    };
-} catch(e) {
-    alert("音声入力に対応していないブラウザです。");
-}
-
-document.getElementById("micBtn").onclick = () => {
-    if(recognition) recognition.start();
-};
-
-
-/* ---------------------------------------------------
-   話しかける（/talk APIに送信）
---------------------------------------------------- */
-document.getElementById("talkBtn").onclick = async () => {
-    const userText = document.getElementById("userInput").value.trim();
-    if (!userText) return;
-
-    const res = await fetch("/talk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userText })
-    });
-
-    const data = await res.json();
-
-    // ログ保存（最重要）
-    saveLog(userText, data.reply, data.audio_url);
-
-    // テキスト表示
-    document.getElementById("reply").innerText = data.reply;
-
-    // 音声再生
-    const audio = document.getElementById("voice");
-    audio.src = data.audio_url;
-    audio.play();
-};
 </script>
-
-</body>
-</html>
