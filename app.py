@@ -68,4 +68,114 @@ def generate_voice(text, filename):
         "input": text
     }
 
-    r = reque
+    r = requests.post(url, headers=headers, json=payload)
+
+    # エラー確認（Render デバッグ用）
+    if r.status_code != 200:
+        print("TTS ERROR:", r.text)
+
+    with open(filename, "wb") as f:
+        f.write(r.content)
+
+
+# -------------------------
+# UI
+# -------------------------
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/chat")
+def chat_page():
+    return render_template("chat.html")
+
+
+# -------------------------
+# 過去ログ一覧
+# -------------------------
+@app.route("/logs")
+def logs():
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
+
+    days = [d for d in sorted(os.listdir("logs")) if not d.startswith(".")]
+    return render_template("logs.html", days=days)
+
+
+# -------------------------
+# 日別ログ表示
+# -------------------------
+@app.route("/logs/<day>")
+def log_day(day):
+    folder = f"logs/{day}"
+    entries = []
+
+    if not os.path.exists(folder):
+        return f"{day} のログがありません。"
+
+    for fname in sorted(os.listdir(folder)):
+        if fname.endswith(".json"):
+            base = fname.replace(".json", "")
+            json_path = f"{folder}/{base}.json"
+            mp3_path = f"{folder}/{base}.mp3"
+
+            with open(json_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            entries.append({
+                "id": base,
+                "user": data["user"],
+                "bot": data["bot"],
+                "audio": f"/{mp3_path}"
+            })
+
+    return render_template("log_view.html", day=day, entries=entries)
+
+
+# -------------------------
+# 会話API
+# -------------------------
+@app.route("/api/chat", methods=["POST"])
+def chat_api():
+    data = request.json
+    user_text = data.get("message", "").strip()
+
+    # 特殊処理
+    if "天気" in user_text:
+        reply = get_weather(user_text)
+    elif "何時" in user_text or "時間" in user_text:
+        reply = f"今は {datetime.now().strftime('%H時%M分')} のようですよ。"
+    elif "今日" in user_text and "日" in user_text:
+        reply = f"今日は {datetime.now().strftime('%Y年%m月%d日')} のようですよ。"
+    else:
+        reply = ai_reply(user_text)
+
+    # 保存
+    day = datetime.now().strftime("%Y-%m-%d")
+    if not os.path.exists(f"logs/{day}"):
+        os.makedirs(f"logs/{day}")
+
+    conv_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    mp3_path = f"logs/{day}/{conv_id}.mp3"
+    json_path = f"logs/{day}/{conv_id}.json"
+
+    # 音声生成
+    generate_voice(reply, mp3_path)
+
+    # JSON保存
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump({"user": user_text, "bot": reply}, f, ensure_ascii=False)
+
+    return jsonify({
+        "reply": reply,
+        "voice_url": "/" + mp3_path
+    })
+
+
+# -------------------------
+# メイン
+# -------------------------
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
