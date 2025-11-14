@@ -10,9 +10,7 @@
 <body>
     <div class="container">
         <h1>おはなし横丁</h1>
-        <p>ゆうくんと、やさしく話せる時間だよ。</p>
-        <p>① 思ったことを一言つぶやく。</p>
-        <p>② 「話しかける」ボタン、または音声入力ボタンで話せます。</p>
+        <p>ゆうくんと、やさしく話す時間だよ。</p>
 
         <!-- 入力欄 -->
         <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
@@ -22,23 +20,21 @@
             <button id="sendBtn">話しかける</button>
         </div>
 
-        <!-- 返答 -->
+        <!-- 返事 -->
         <div id="responseArea"></div>
 
         <!-- 音声プレイヤー -->
-        <audio id="voicePlayer" controls style="width: 100%; margin-top: 20px; display:none;"></audio>
+        <audio id="voicePlayer" controls preload="auto" style="width: 100%; margin-top: 20px; display:none;"></audio>
 
-        <!-- ログ表示リンク -->
         <p style="margin-top:30px;">
-            <a href="/logs">🗂 過去の会話カレンダーを見る</a>
+            <a href="./logs">🗂 過去の会話カレンダーを見る</a>
         </p>
     </div>
 
     <script>
-    /* -----------------------------------
-       🎤 音声入力 → 自動送信（7〜15秒）
-    ----------------------------------- */
-    let recognizing = false;
+    /* ==========================================================
+       🎤 音声入力（録音 → 自動送信 → 5秒固定）
+    ========================================================== */
     let recognition;
     let autoSendTimer = null;
 
@@ -48,40 +44,34 @@
         recognition.lang = "ja-JP";
         recognition.interimResults = true;
 
-        recognition.onstart = () => {
-            recognizing = true;
-            console.log("[音声入力] start");
-        };
-
-        recognition.onend = () => {
-            recognizing = false;
-            console.log("[音声入力] end");
-        };
-
         recognition.onresult = (event) => {
             const text = event.results[0][0].transcript;
             document.getElementById("userInput").value = text;
 
+            // 前のタイマーがあればリセット
             if (autoSendTimer) clearTimeout(autoSendTimer);
 
-            const len = text.length;
-            const waitMs = len < 15 ? 7000 : 15000;
-
+            // 🔥 発話が変わるたびに 5 秒後に自動送信
             autoSendTimer = setTimeout(() => {
                 sendMessage();
-            }, waitMs);
+            }, 5000);
         };
     } catch (e) {
-        console.warn("音声認識が利用できません:", e);
+        console.warn("[音声認識エラー]", e);
     }
 
+    // 音声ボタン
     document.getElementById("voiceBtn").onclick = () => {
-        if (recognition) recognition.start();
+        try {
+            recognition.start();
+        } catch (e) {
+            console.warn("音声認識開始できません:", e);
+        }
     };
 
-    /* -----------------------------------
+    /* ==========================================================
        ✉️ 送信処理
-    ----------------------------------- */
+    ========================================================== */
     document.getElementById("sendBtn").onclick = () => {
         sendMessage();
     };
@@ -95,19 +85,25 @@
         fetch("/talk", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({message: text})
+            body: JSON.stringify({ message: text })
         })
         .then(res => res.json())
         .then(data => {
             document.getElementById("responseArea").innerHTML = data.reply;
 
             const player = document.getElementById("voicePlayer");
-            player.src = data.audio_url + "?t=" + new Date().getTime();
             player.style.display = "block";
-            player.play();
+            player.src = data.audio_url + "?t=" + Date.now();
+
+            /* 🔥 音切れ防止：load → 少し待って → play */
+            player.load();
+            setTimeout(() => {
+                player.play().catch(e => console.warn("再生エラー:", e));
+            }, 120);
         })
         .catch(err => {
-            document.getElementById("responseArea").innerHTML = "エラーが起きたみたい…ごめんね。";
+            document.getElementById("responseArea").innerHTML =
+                "ごめんね、なんだかエラーが起きたみたい。もう一度言ってね。";
             console.error(err);
         });
 
