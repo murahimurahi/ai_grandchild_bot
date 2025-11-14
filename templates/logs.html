@@ -8,23 +8,15 @@
 </head>
 
 <body>
-    <div class="container">
+<div class="container small">
+    <h2>📅 会話カレンダー</h2>
+    <p><a href="/">🏠 ホームに戻る</a></p>
 
-        <h1>📅 会話カレンダー</h1>
-        <p><a href="/">🏠 ホームに戻る</a></p>
-
-        {% if items %}
-            <ul>
-                {% for item in items %}
-                    <li>
-                        <a href="/logs/{{ item }}">{{ item }}</a>
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>まだ会話ログはありません。</p>
-        {% endif %}
-
-    </div>
+    <ul>
+        {% for d in days %}
+            <li><a href="/logs/{{ d }}">{{ d }}</a></li>
+        {% endfor %}
+    </ul>
+</div>
 </body>
 </html>
