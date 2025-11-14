@@ -2,99 +2,42 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>おはなし横丁</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>AI Grandchild Bot</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: "游ゴシック", sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        a.button {
+            display: inline-block;
+            padding: 12px 25px;
+            background: #0078ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 18px;
+            margin-top: 15px;
+        }
+    </style>
 </head>
-
 <body>
-<div class="container">
-
-    <h1>おはなし横丁</h1>
-    <p class="sub">ゆうくんと、楽しく話す時間だよ。</p>
-
-    <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
-
-    <div class="buttons">
-        <button id="voiceBtn" class="mic-off">🎤 音声入力</button>
-        <button id="sendBtn">話しかける</button>
+    <div class="box">
+        <h1>AI Grandchild Bot</h1>
+        <p>孫と会話する AI チャットへようこそ。</p>
+        <a class="button" href="/chat">チャットを開く</a>
     </div>
-
-    <div class="info">
-        👉 音声入力は5秒話すと自動で送信されるよ。<br>
-        👉 下のカレンダーから過去の会話も見られるよ。
-    </div>
-
-    <div id="responseArea"></div>
-
-    <audio id="voicePlayer" controls preload="auto" style="display:none;"></audio>
-
-    <p><a href="/logs">📁 過去の会話カレンダーを見る</a></p>
-
-</div>
-
-<script>
-let recognition;
-let timer = null;
-
-try {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognition = new SR();
-    recognition.lang = "ja-JP";
-    recognition.interimResults = true;
-
-    recognition.onstart = () => {
-        document.getElementById("voiceBtn").classList.add("mic-on");
-    };
-
-    recognition.onend = () => {
-        document.getElementById("voiceBtn").classList.remove("mic-on");
-    };
-
-    recognition.onresult = (e) => {
-        const text = e.results[0][0].transcript;
-        document.getElementById("userInput").value = text;
-
-        if (timer) clearTimeout(timer);
-        timer = setTimeout(() => { sendMessage(); }, 5000);
-    };
-
-} catch (e) {
-    console.error("音声認識エラー:", e);
-}
-
-document.getElementById("voiceBtn").onclick = () => {
-    try { recognition.start(); } catch {}
-};
-
-document.getElementById("sendBtn").onclick = () => {
-    sendMessage();
-};
-
-function sendMessage() {
-    const text = document.getElementById("userInput").value.trim();
-    if (!text) return;
-
-    document.getElementById("responseArea").innerHTML = "ゆうくんが考え中…";
-
-    fetch("/talk", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ message: text })
-    })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById("responseArea").innerHTML = data.reply;
-
-        const player = document.getElementById("voicePlayer");
-        player.style.display = "block";
-        player.src = data.audio_url + "?t=" + Date.now();
-
-        player.load();
-        setTimeout(() => player.play(), 200);
-    });
-}
-</script>
-
 </body>
 </html>
