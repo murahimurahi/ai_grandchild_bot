@@ -23,7 +23,10 @@ def get_weather(user_text="東京"):
         city_match = re.search(r"(.+?)の天気", user_text)
         city = city_match.group(1) if city_match else "東京"
 
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
+        url = (
+            f"http://api.openweathermap.org/data/2.5/weather?"
+            f"q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
+        )
         res = requests.get(url, timeout=6)
         data = res.json()
 
@@ -99,7 +102,7 @@ def show_log(day):
 
 
 # -----------------------------
-# 音声ファイルを Flask で返す（重要！）
+# 音声ファイル配信（重要）
 # -----------------------------
 @app.route("/voice/<day>")
 def get_voice(day):
@@ -115,9 +118,9 @@ def get_voice(day):
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
-    user_text = data.get("message", "").trim() if data.get("message") else ""
+    user_text = data.get("message", "").strip()
 
-    # ------------------- 特殊対応 -------------------
+    # --- 特殊応答 ---
     if "天気" in user_text:
         reply_text = get_weather(user_text)
 
@@ -125,8 +128,45 @@ def talk():
         now = datetime.datetime.now().strftime("%H時%M分")
         reply_text = f"今は{now}だよ！"
 
+    # --- 通常会話 ---
     else:
         prompt = (
             "あなたは優しい孫のゆうくんです。利用者と自然に会話します。"
             "呼称として『おばあちゃん』『おじいちゃん』は使わず、"
-            "丁寧で優しい言
+            "丁寧で優しい言葉で話してください。"
+        )
+
+        res = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_text}
+            ]
+        )
+        reply_text = res.choices[0].message.content.strip()
+
+    # ------------------- TTS -------------------
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    audio_path = f"static/output_{ts}.mp3"
+
+    speech = client.audio.speech.create(
+        model="gpt-4o-mini-tts",
+        voice="verse",
+        input=reply_text
+    )
+    audio_binary = speech.read()
+
+    with open(audio_path, "wb") as f:
+        f.write(audio_binary)
+
+    # ログ保存
+    save_log(user_text, reply_text, audio_binary)
+
+    return jsonify({
+        "reply": reply_text,
+        "audio_url": "/" + audio_path
+    })
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
