@@ -2,120 +2,34 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>AI Grandchild Chat</title>
+    <title>おはなし横丁 - チャット</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
-    <div class="chat-container">
+    <div class="chat-wrapper">
 
-        <div class="chat-header">
-            <h2>AI Grandchild Bot</h2>
+        <h1 class="chat-title">おはなし横丁</h1>
+        <p class="chat-subtitle">ゆうくんと、楽しく話す時間だよ。</p>
+
+        <div id="chatWindow" class="chat-window"></div>
+
+        <div class="input-row">
+            <button id="voiceBtn" class="voice-btn">🎤 音声入力</button>
+            <button id="sendBtn" class="send-btn">話しかける</button>
         </div>
 
-        <!-- LINE風ログ -->
-        <div id="messages" class="messages"></div>
+        <p class="hint">
+            📌 音声入力は5秒話すと自動で送信されるよ。<br>
+            📁 下のカレンダーから過去の会話も見られるよ。
+        </p>
 
-        <!-- 音声ログ -->
-        <div id="voice-logs" class="voice-logs"></div>
+        <p><a href="/logs" class="log-link">📂 過去の会話カレンダーを見る</a></p>
 
-        <!-- 入力欄 -->
-        <div class="input-area">
-            <input id="textInput" type="text" placeholder="メッセージを入力 (音声でも可)">
-            <button id="sendBtn">送信</button>
-        </div>
-
-        <button id="voiceBtn" class="voice-button">🎤</button>
+        <div id="voiceLogs" class="voice-log-box"></div>
 
     </div>
 
-    <script>
-        const messagesDiv = document.getElementById("messages");
-        const voiceLogsDiv = document.getElementById("voice-logs");
-        const sendBtn = document.getElementById("sendBtn");
-        const textInput = document.getElementById("textInput");
-        const voiceBtn = document.getElementById("voiceBtn");
-
-        // ----------------------------------------------------------
-        // LINE風吹き出し：右（あなた）｜左（AI）
-        // ----------------------------------------------------------
-        function addBubble(sender, text) {
-            const div = document.createElement("div");
-            div.className = sender === "あなた" ? "bubble-right" : "bubble-left";
-            div.innerHTML = text;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        // ----------------------------------------------------------
-        // 音声ログ追加
-        // ----------------------------------------------------------
-        function addVoiceLog(url) {
-            const audio = document.createElement("audio");
-            audio.controls = true;
-            audio.src = url;
-            audio.style.width = "100%";
-            audio.className = "voice-log-item";
-
-            voiceLogsDiv.appendChild(audio);
-            voiceLogsDiv.scrollTop = voiceLogsDiv.scrollHeight;
-        }
-
-        // ----------------------------------------------------------
-        // 音声認識（自動ON）
-        // ----------------------------------------------------------
-        let recognition;
-        if ('webkitSpeechRecognition' in window) {
-            recognition = new webkitSpeechRecognition();
-            recognition.lang = "ja-JP";
-            recognition.continuous = true;
-
-            recognition.onresult = function(event) {
-                const text = event.results[event.results.length - 1][0].transcript;
-                sendText(text);
-            };
-
-            recognition.start();
-        }
-
-        voiceBtn.onclick = () => {
-            if (recognition) recognition.start();
-        };
-
-        // ----------------------------------------------------------
-        // 送信処理
-        // ----------------------------------------------------------
-        sendBtn.onclick = () => {
-            const text = textInput.value.trim();
-            if (text) sendText(text);
-        };
-
-        textInput.addEventListener("keydown", e => {
-            if (e.key === "Enter") sendBtn.click();
-        });
-
-        // ----------------------------------------------------------
-        // /api/chat
-        // ----------------------------------------------------------
-        function sendText(text) {
-            addBubble("あなた", text);
-            textInput.value = "";
-
-            fetch("/api/chat", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ message: text })
-            })
-            .then(res => res.json())
-            .then(data => {
-                addBubble("AI孫", data.reply);
-
-                if (data.voice_url) {
-                    addVoiceLog(data.voice_url);
-                }
-            });
-        }
-    </script>
-
+    <script src="/static/chat.js"></script>
 </body>
 </html>
