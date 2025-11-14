@@ -5,22 +5,22 @@
     <title>会話カレンダー</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
+    <div class="container">
+        <h2>📅 会話カレンダー</h2>
 
-<div class="container">
-    <h2>📅 会話カレンダー</h2>
-    <p><a href="/">🏠 ホームに戻る</a></p>
+        <p><a href="/">🏠 ホームに戻る</a></p>
 
-    {% if dates %}
-        <ul>
-        {% for d in dates %}
-            <li><a href="/logs/{{ d }}">{{ d }}</a></li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p>まだログがありません。</p>
-    {% endif %}
-</div>
-
+        {% if files %}
+            <ul>
+                {% for f in files %}
+                <li><a href="/logs/{{ f }}">{{ f }}</a></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>まだ会話ログはありません。</p>
+        {% endif %}
+    </div>
 </body>
 </html>
