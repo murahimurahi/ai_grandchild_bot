@@ -1,32 +1,42 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>おはなし横丁</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <script defer src="/static/chat.js"></script>
+    <link rel="stylesheet" href="/static/style.css" />
 </head>
 
 <body>
-<div class="chat-container">
+    <div class="chat-wrapper">
 
-    <h2 class="title">おはなし横丁</h2>
-    <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
+        <h2 class="title">おはなし横丁</h2>
+        <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
 
-    <!-- 吹き出しUI -->
-    <div id="messages" class="messages"></div>
+        <!-- メッセージ表示 -->
+        <div id="chatWindow" class="chat-window"></div>
 
-    <!-- 音声ログ -->
-    <div id="voice-logs" class="voice-logs"></div>
+        <!-- ボタン -->
+        <div class="button-row">
+            <button id="voiceBtn" class="btn voice">🎤 音声入力</button>
+            <button id="talkBtn" class="btn send">話しかける</button>
+        </div>
 
-    <!-- 入力＆ボタン -->
-    <div class="input-row">
-        <input id="textInput" type="text" placeholder="メッセージを入力してね">
-        <button id="sendBtn">送信</button>
+        <!-- 注意書き -->
+        <p class="note">
+            ⭐ 音声入力は5秒話すと自動で送信されるよ。<br>
+            ⭐ 下のカレンダーから過去の会話も見られるよ。
+        </p>
+
+        <!-- 会話ログページへのリンク -->
+        <p class="log-link">
+            <a href="/logs">📁 過去の会話カレンダーを見る</a>
+        </p>
+
+        <!-- 音声ログ（会話ごと） -->
+        <div id="voiceLogs" class="voice-logs"></div>
+
     </div>
 
-    <button id="voiceBtn" class="voice-button">🎤 音声入力</button>
-
-</div>
+    <script src="/static/chat.js"></script>
 </body>
 </html>
