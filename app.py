@@ -42,7 +42,7 @@ def get_weather(user_text="東京"):
 
 
 # -----------------------------
-# ログ保存
+# ログ保存（音声は会話ごとに保存）
 # -----------------------------
 def save_log(user_text, bot_text, audio_file):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -51,14 +51,16 @@ def save_log(user_text, bot_text, audio_file):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    # テキストログ
+    # テキストログ追加
     with open(f"{folder}/log.txt", "a", encoding="utf-8") as f:
         f.write(f"【あなた】{user_text}\n")
         f.write(f"【ゆうくん】{bot_text}\n\n")
 
-    # 音声保存
+    # 音声ログ：タイムスタンプ名前で保存（会話ごとに残す）
     if audio_file:
-        with open(f"{folder}/voice.mp3", "wb") as f:
+        ts = datetime.datetime.now().strftime("%H%M%S")
+        voice_path = f"{folder}/voice_{ts}.mp3"
+        with open(voice_path, "wb") as f:
             f.write(audio_file)
 
 
@@ -84,14 +86,18 @@ def logs():
 def show_log(day):
     folder = f"logs/{day}"
     textfile = f"{folder}/log.txt"
-    voicefile = f"{folder}/voice.mp3"
 
     text_content = ""
     if os.path.exists(textfile):
         with open(textfile, "r", encoding="utf-8") as f:
             text_content = f.read()
 
-    has_voice = os.path.exists(voicefile)
+    # 音声が1件以上あるか
+    voice_files = [
+        f for f in os.listdir(folder)
+        if f.startswith("voice_") and f.endswith(".mp3")
+    ]
+    has_voice = len(voice_files) > 0
 
     return render_template(
         "log_view.html",
@@ -102,13 +108,26 @@ def show_log(day):
 
 
 # -----------------------------
-# 音声ファイル配信（重要）
+# 音声ファイル配信（最新1件のみ再生）
 # -----------------------------
 @app.route("/voice/<day>")
 def get_voice(day):
-    filepath = f"logs/{day}/voice.mp3"
-    if not os.path.exists(filepath):
+    folder = f"logs/{day}"
+
+    if not os.path.exists(folder):
         return "音声が見つからないよ。", 404
+
+    # voice_*.mp3 をすべて取得してソート → 最新を使う
+    files = [
+        f for f in os.listdir(folder)
+        if f.startswith("voice_") and f.endswith(".mp3")
+    ]
+    if not files:
+        return "音声が見つからないよ。", 404
+
+    latest = sorted(files)[-1]  # 最新ファイル
+    filepath = f"{folder}/{latest}"
+
     return send_file(filepath, mimetype="audio/mpeg")
 
 
@@ -128,8 +147,8 @@ def talk():
         now = datetime.datetime.now().strftime("%H時%M分")
         reply_text = f"今は{now}だよ！"
 
-    # --- 通常会話 ---
     else:
+        # 通常会話のプロンプト
         prompt = (
             "あなたは優しい孫のゆうくんです。利用者と自然に会話します。"
             "呼称として『おばあちゃん』『おじいちゃん』は使わず、"
@@ -156,10 +175,11 @@ def talk():
     )
     audio_binary = speech.read()
 
+    # 一時的に出力ファイルに保存（今まで通りの仕様）
     with open(audio_path, "wb") as f:
         f.write(audio_binary)
 
-    # ログ保存
+    # ログ保存（今回強化された部分）
     save_log(user_text, reply_text, audio_binary)
 
     return jsonify({
