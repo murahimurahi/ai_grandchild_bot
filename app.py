@@ -42,36 +42,32 @@ def get_weather(user_text="東京"):
 
 
 # -----------------------------
-# ログ保存（音声は会話ごとに保存）
+# ログ保存（会話単位で音声も保存）
 # -----------------------------
-def save_log(user_text, bot_text, audio_file):
+def save_log(user_text, bot_text, audio_file, timestamp):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     folder = f"logs/{today}"
 
     if not os.path.exists(folder):
         os.makedirs(folder)
 
-    # テキストログ追加
+    # テキストログにブロック単位で記録
     with open(f"{folder}/log.txt", "a", encoding="utf-8") as f:
+        f.write(f"[TIME]{timestamp}\n")
         f.write(f"【あなた】{user_text}\n")
-        f.write(f"【ゆうくん】{bot_text}\n\n")
+        f.write(f"【ゆうくん】{bot_text}\n")
+        f.write("[END]\n\n")
 
-    # 音声ログ：タイムスタンプ名前で保存（会話ごとに残す）
+    # 音声ログ（timestamp名で保存）
     if audio_file:
-        ts = datetime.datetime.now().strftime("%H%M%S")
-        voice_path = f"{folder}/voice_{ts}.mp3"
+        voice_path = f"{folder}/voice_{timestamp}.mp3"
         with open(voice_path, "wb") as f:
             f.write(audio_file)
 
 
 # -----------------------------
-# ルーティング
+# ログ閲覧
 # -----------------------------
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-
 @app.route("/logs")
 def logs():
     if not os.path.exists("logs"):
@@ -87,47 +83,48 @@ def show_log(day):
     folder = f"logs/{day}"
     textfile = f"{folder}/log.txt"
 
-    text_content = ""
+    conversations = []
+
     if os.path.exists(textfile):
         with open(textfile, "r", encoding="utf-8") as f:
-            text_content = f.read()
+            lines = f.read().split("[END]")
 
-    # 音声が1件以上あるか
-    voice_files = [
-        f for f in os.listdir(folder)
-        if f.startswith("voice_") and f.endswith(".mp3")
-    ]
-    has_voice = len(voice_files) > 0
+        for block in lines:
+            block = block.strip()
+            if not block:
+                continue
+
+            rows = block.split("\n")
+            ts = rows[0].replace("[TIME]", "").strip()
+            text = "\n".join(rows[1:])
+
+            # 音声ファイルチェック
+            voice_path = None
+            voice_file = f"{folder}/voice_{ts}.mp3"
+            if os.path.exists(voice_file):
+                voice_path = f"/voice/{day}/{ts}"
+
+            conversations.append({
+                "timestamp": ts,
+                "text": text,
+                "voice": voice_path
+            })
 
     return render_template(
         "log_view.html",
         day=day,
-        text_content=text_content,
-        has_voice=has_voice
+        conversations=conversations
     )
 
 
 # -----------------------------
-# 音声ファイル配信（最新1件のみ再生）
+# 音声ファイル取得
 # -----------------------------
-@app.route("/voice/<day>")
-def get_voice(day):
-    folder = f"logs/{day}"
-
-    if not os.path.exists(folder):
+@app.route("/voice/<day>/<ts>")
+def get_voice(day, ts):
+    filepath = f"logs/{day}/voice_{ts}.mp3"
+    if not os.path.exists(filepath):
         return "音声が見つからないよ。", 404
-
-    # voice_*.mp3 をすべて取得してソート → 最新を使う
-    files = [
-        f for f in os.listdir(folder)
-        if f.startswith("voice_") and f.endswith(".mp3")
-    ]
-    if not files:
-        return "音声が見つからないよ。", 404
-
-    latest = sorted(files)[-1]  # 最新ファイル
-    filepath = f"{folder}/{latest}"
-
     return send_file(filepath, mimetype="audio/mpeg")
 
 
@@ -139,54 +136,5 @@ def talk():
     data = request.json
     user_text = data.get("message", "").strip()
 
-    # --- 特殊応答 ---
-    if "天気" in user_text:
-        reply_text = get_weather(user_text)
-
-    elif any(k in user_text for k in ["時間", "何時"]):
-        now = datetime.datetime.now().strftime("%H時%M分")
-        reply_text = f"今は{now}だよ！"
-
-    else:
-        # 通常会話のプロンプト
-        prompt = (
-            "あなたは優しい孫のゆうくんです。利用者と自然に会話します。"
-            "呼称として『おばあちゃん』『おじいちゃん』は使わず、"
-            "丁寧で優しい言葉で話してください。"
-        )
-
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_text}
-            ]
-        )
-        reply_text = res.choices[0].message.content.strip()
-
-    # ------------------- TTS -------------------
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    audio_path = f"static/output_{ts}.mp3"
-
-    speech = client.audio.speech.create(
-        model="gpt-4o-mini-tts",
-        voice="verse",
-        input=reply_text
-    )
-    audio_binary = speech.read()
-
-    # 一時的に出力ファイルに保存（今まで通りの仕様）
-    with open(audio_path, "wb") as f:
-        f.write(audio_binary)
-
-    # ログ保存（今回強化された部分）
-    save_log(user_text, reply_text, audio_binary)
-
-    return jsonify({
-        "reply": reply_text,
-        "audio_url": "/" + audio_path
-    })
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    # ------------------- 日付・曜日 -------------------
+    if an
