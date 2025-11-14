@@ -13,7 +13,6 @@
     <h1>おはなし横丁</h1>
     <p class="sub">ゆうくんと、楽しく話す時間だよ。</p>
 
-    <!-- 入力欄（入力は保持する） -->
     <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
 
     <div class="buttons">
@@ -21,25 +20,20 @@
         <button id="sendBtn">話しかける</button>
     </div>
 
-    <!-- 説明文 -->
     <div class="info">
         👉 音声入力は5秒話すと自動で送信されるよ。<br>
         👉 下のカレンダーから過去の会話も見られるよ。
     </div>
 
-    <!-- 返事 -->
     <div id="responseArea"></div>
 
-    <!-- 音声 -->
     <audio id="voicePlayer" controls preload="auto" style="display:none;"></audio>
 
     <p><a href="/logs">📁 過去の会話カレンダーを見る</a></p>
 
 </div>
 
-
 <script>
-/* 音声入力まわり ==================================*/
 let recognition;
 let timer = null;
 
@@ -73,8 +67,6 @@ document.getElementById("voiceBtn").onclick = () => {
     try { recognition.start(); } catch {}
 };
 
-
-/* 送信処理 ==================================*/
 document.getElementById("sendBtn").onclick = () => {
     sendMessage();
 };
@@ -99,10 +91,8 @@ function sendMessage() {
         player.src = data.audio_url + "?t=" + Date.now();
 
         player.load();
-        setTimeout(() => player.play(), 150);
+        setTimeout(() => player.play(), 200);
     });
-
-    // 入力欄は消さない！
 }
 </script>
 
