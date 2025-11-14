@@ -1,105 +1,118 @@
-<script>
-/* ---------------------------------------------------
-   ローカルログ保存（テキスト＋音声URL）
---------------------------------------------------- */
-function saveLog(userText, botText, audioUrl) {
-    const logs = JSON.parse(localStorage.getItem("logs") || "[]");
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>おはなし横丁</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
 
-    logs.push({
-        timestamp: new Date().toISOString(),
-        user: userText,
-        bot: botText,
-        audio: audioUrl
-    });
+<body>
+    <div class="container">
+        <h1>おはなし横丁</h1>
+        <p>ゆうくんと、やさしく話せる時間だよ。</p>
+        <p>① 思ったことを一言つぶやく。</p>
+        <p>② 「話しかける」ボタン、または音声入力ボタンで話せます。</p>
 
-    localStorage.setItem("logs", JSON.stringify(logs));
-}
+        <!-- 入力欄 -->
+        <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
 
-/* ---------------------------------------------------
-   音声入力 → 自動送信（7秒 or 15秒）
---------------------------------------------------- */
-let recognition;
+        <div class="buttons">
+            <button id="voiceBtn">🎤 音声入力</button>
+            <button id="sendBtn">話しかける</button>
+        </div>
 
-try {
-    const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+        <!-- 返答 -->
+        <div id="responseArea"></div>
 
-    recognition = new SpeechRecognition();
-    recognition.lang = "ja-JP";
-    recognition.interimResults = false;
+        <!-- 音声プレイヤー -->
+        <audio id="voicePlayer" controls style="width: 100%; margin-top: 20px; display:none;"></audio>
 
-    recognition.onresult = function(e) {
-        const text = e.results[0][0].transcript;
-        document.getElementById("userInput").value = text;
+        <!-- ログ表示リンク -->
+        <p style="margin-top:30px;">
+            <a href="/logs">🗂 過去の会話カレンダーを見る</a>
+        </p>
+    </div>
 
-        // 短文 → 7秒 / 長文 → 15秒
-        let delay = text.length <= 30 ? 7000 : 15000;
+    <script>
+    /* -----------------------------------
+       🎤 音声入力 → 自動送信（7〜15秒）
+    ----------------------------------- */
+    let recognizing = false;
+    let recognition;
+    let autoSendTimer = null;
 
-        document.getElementById("reply").innerText =
-            `聞こえたよ。「${text}」\n少し待っててね…`;
+    try {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = "ja-JP";
+        recognition.interimResults = true;
 
-        setTimeout(() => {
-            autoSend(text);
-        }, delay);
-    };
+        recognition.onstart = () => {
+            recognizing = true;
+            console.log("[音声入力] start");
+        };
 
-} catch (e) {
-    alert("音声入力に対応していないブラウザです。");
-}
+        recognition.onend = () => {
+            recognizing = false;
+            console.log("[音声入力] end");
+        };
 
-document.getElementById("micBtn").onclick = () => {
-    if (recognition) recognition.start();
-};
+        recognition.onresult = (event) => {
+            const text = event.results[0][0].transcript;
+            document.getElementById("userInput").value = text;
 
-/* ---------------------------------------------------
-   自動送信関数
---------------------------------------------------- */
-async function autoSend(text) {
-    const res = await fetch("/talk", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: text})
-    });
+            if (autoSendTimer) clearTimeout(autoSendTimer);
 
-    const data = await res.json();
+            const len = text.length;
+            const waitMs = len < 15 ? 7000 : 15000;
 
-    saveLog(text, data.reply, data.audio_url);
-
-    document.getElementById("reply").innerText = data.reply;
-
-    const audio = document.getElementById("voice");
-    audio.src = data.audio_url;
-    audio.play();
-}
-
-/* ---------------------------------------------------
-   手動送信
---------------------------------------------------- */
-document.getElementById("talkBtn").onclick = () => {
-    const text = document.getElementById("userInput").value.trim();
-    if (!text) return;
-    autoSend(text);
-};
-
-/* ---------------------------------------------------
-   ログ表示
---------------------------------------------------- */
-function showLogs() {
-    const logs = JSON.parse(localStorage.getItem("logs") || "[]");
-    const box = document.getElementById("logs-box");
-
-    if (logs.length === 0) {
-        box.innerHTML = "<p>まだログはありません。</p>";
-        return;
+            autoSendTimer = setTimeout(() => {
+                sendMessage();
+            }, waitMs);
+        };
+    } catch (e) {
+        console.warn("音声認識が利用できません:", e);
     }
 
-    box.innerHTML = logs.map(l => `
-        <div class="log-item">
-            <div>🕒 ${new Date(l.timestamp).toLocaleString()}</div>
-            <div><b>あなた：</b> ${l.user}</div>
-            <div><b>ゆうくん：</b> ${l.bot}</div>
-            <audio controls src="${l.audio}"></audio>
-        </div>
-    `).join("");
-}
-</script>
+    document.getElementById("voiceBtn").onclick = () => {
+        if (recognition) recognition.start();
+    };
+
+    /* -----------------------------------
+       ✉️ 送信処理
+    ----------------------------------- */
+    document.getElementById("sendBtn").onclick = () => {
+        sendMessage();
+    };
+
+    function sendMessage() {
+        const text = document.getElementById("userInput").value.trim();
+        if (!text) return;
+
+        document.getElementById("responseArea").innerHTML = "ゆうくんが考え中…";
+
+        fetch("/talk", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({message: text})
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("responseArea").innerHTML = data.reply;
+
+            const player = document.getElementById("voicePlayer");
+            player.src = data.audio_url + "?t=" + new Date().getTime();
+            player.style.display = "block";
+            player.play();
+        })
+        .catch(err => {
+            document.getElementById("responseArea").innerHTML = "エラーが起きたみたい…ごめんね。";
+            console.error(err);
+        });
+
+        document.getElementById("userInput").value = "";
+    }
+    </script>
+</body>
+</html>
