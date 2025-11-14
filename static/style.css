@@ -1,38 +1,61 @@
 body {
-  font-family: 'Hiragino Maru Gothic ProN', sans-serif;
-  background: #f9fafc;
-  text-align: center;
-  margin-top: 50px;
+    background: #f5f5f5;
+    font-family: "Hiragino Sans", sans-serif;
 }
 
 .container {
-  background: white;
-  display: inline-block;
-  padding: 30px;
-  border-radius: 20px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 500px;
+    margin: 40px auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0px 3px 8px rgba(0,0,0,0.1);
 }
 
 textarea {
-  width: 80%;
-  height: 60px;
-  border-radius: 10px;
-  border: 1px solid #ddd;
-  padding: 10px;
+    width: 100%;
+    height: 80px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
 }
 
+.buttons { margin-top: 10px; }
+
 button {
-  margin: 5px;
-  padding: 8px 20px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    margin-right: 8px;
 }
 
 #voiceBtn {
-  background-color: #87cefa;
+    background: #87cefa;
+    transition: 0.2s;
 }
 
-button[type="submit"] {
-  background-color: #ffb6c1;
+#voiceBtn.recording {
+    background: #ff5b5b;
+    color: white;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.5); }
+    100% { box-shadow: 0 0 12px 12px rgba(255,0,0,0); }
+}
+
+#sendBtn {
+    background: #ffd27f;
+}
+
+.log-box {
+    background: #fafafa;
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin: 15px 0;
+    border-radius: 8px;
 }
