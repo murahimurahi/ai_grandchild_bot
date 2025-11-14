@@ -2,7 +2,7 @@ import os
 import datetime
 import logging
 import requests
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from openai import OpenAI
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -53,7 +53,7 @@ def save_log(user_text, bot_text, audio_file):
         f.write(f"【あなた】{user_text}\n")
         f.write(f"【ゆうくん】{bot_text}\n\n")
 
-    # 音声も保存
+    # 音声保存
     if audio_file:
         with open(f"{folder}/voice.mp3", "wb") as f:
             f.write(audio_file)
@@ -69,6 +69,9 @@ def index():
 
 @app.route("/logs")
 def logs():
+    if not os.path.exists("logs"):
+        os.makedirs("logs")
+
     days = sorted(os.listdir("logs"))
     days = [d for d in days if not d.startswith(".")]
     return render_template("logs.html", days=days)
@@ -91,9 +94,19 @@ def show_log(day):
         "log_view.html",
         day=day,
         text_content=text_content,
-        has_voice=has_voice,
-        voice_path=f"/{voicefile}" if has_voice else None
+        has_voice=has_voice
     )
+
+
+# -----------------------------
+# 音声ファイルを Flask で返す（重要！）
+# -----------------------------
+@app.route("/voice/<day>")
+def get_voice(day):
+    filepath = f"logs/{day}/voice.mp3"
+    if not os.path.exists(filepath):
+        return "音声が見つからないよ。", 404
+    return send_file(filepath, mimetype="audio/mpeg")
 
 
 # -----------------------------
@@ -102,7 +115,7 @@ def show_log(day):
 @app.route("/talk", methods=["POST"])
 def talk():
     data = request.json
-    user_text = data.get("message", "").strip()
+    user_text = data.get("message", "").trim() if data.get("message") else ""
 
     # ------------------- 特殊対応 -------------------
     if "天気" in user_text:
@@ -116,39 +129,4 @@ def talk():
         prompt = (
             "あなたは優しい孫のゆうくんです。利用者と自然に会話します。"
             "呼称として『おばあちゃん』『おじいちゃん』は使わず、"
-            "丁寧で優しい言葉で話してください。"
-        )
-
-        res = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_text}
-            ]
-        )
-        reply_text = res.choices[0].message.content.strip()
-
-    # ------------------- TTS -------------------
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    audio_path = f"static/output_{ts}.mp3"
-
-    speech = client.audio.speech.create(
-        model="gpt-4o-mini-tts",
-        voice="verse",
-        input=reply_text
-    )
-    audio_binary = speech.read()
-    with open(audio_path, "wb") as f:
-        f.write(audio_binary)
-
-    # ログ保存
-    save_log(user_text, reply_text, audio_binary)
-
-    return jsonify({
-        "reply": reply_text,
-        "audio_url": "/" + audio_path
-    })
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+            "丁寧で優しい言
