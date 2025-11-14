@@ -2,113 +2,104 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>おはなし横丁</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-
-<body>
-    <div class="container">
-        <h1>おはなし横丁</h1>
-        <p>ゆうくんと、やさしく話す時間だよ。</p>
-
-        <!-- 入力欄 -->
-        <textarea id="userInput" placeholder="話したいことを書いてね"></textarea>
-
-        <div class="buttons">
-            <button id="voiceBtn">🎤 音声入力</button>
-            <button id="sendBtn">話しかける</button>
-        </div>
-
-        <!-- 返事 -->
-        <div id="responseArea"></div>
-
-        <!-- 音声プレイヤー -->
-        <audio id="voicePlayer" controls preload="auto" style="width: 100%; margin-top: 20px; display:none;"></audio>
-
-        <p style="margin-top:30px;">
-            <a href="./logs">🗂 過去の会話カレンダーを見る</a>
-        </p>
-    </div>
-
-    <script>
-    /* ==========================================================
-       🎤 音声入力（録音 → 自動送信 → 5秒固定）
-    ========================================================== */
-    let recognition;
-    let autoSendTimer = null;
-
-    try {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = "ja-JP";
-        recognition.interimResults = true;
-
-        recognition.onresult = (event) => {
-            const text = event.results[0][0].transcript;
-            document.getElementById("userInput").value = text;
-
-            // 前のタイマーがあればリセット
-            if (autoSendTimer) clearTimeout(autoSendTimer);
-
-            // 🔥 発話が変わるたびに 5 秒後に自動送信
-            autoSendTimer = setTimeout(() => {
-                sendMessage();
-            }, 5000);
-        };
-    } catch (e) {
-        console.warn("[音声認識エラー]", e);
-    }
-
-    // 音声ボタン
-    document.getElementById("voiceBtn").onclick = () => {
-        try {
-            recognition.start();
-        } catch (e) {
-            console.warn("音声認識開始できません:", e);
+    <style>
+        body {
+            font-family: "Hiragino Sans", sans-serif;
+            background:#fafafa;
+            padding:40px;
+            text-align:center;
         }
-    };
+        #logArea {
+            margin-top: 40px;
+            font-size:14px;
+            color:#555;
+        }
+        audio { margin-top:10px; }
+    </style>
+</head>
+<body>
 
-    /* ==========================================================
-       ✉️ 送信処理
-    ========================================================== */
-    document.getElementById("sendBtn").onclick = () => {
-        sendMessage();
-    };
+<h1>おはなし横丁</h1>
+<p>ゆうくんと、やさしく話せる時間をどうぞ。</p>
+<p>① 思ったことを一言つぶやく。</p>
+<p>②「話しかける」ボタン、または音声入力ボタンで話せます。</p>
 
-    function sendMessage() {
-        const text = document.getElementById("userInput").value.trim();
+<textarea id="user_input" rows="3" style="width:80%;font-size:18px;"></textarea><br><br>
+
+<button id="voiceBtn">🎤 音声入力</button>
+<button id="askBtn">話しかける</button>
+
+<div id="responseArea" style="margin-top:30px;font-size:18px;"></div>
+
+<div id="logArea">
+    <a href="/logs" target="_blank">📘 過去の会話ログを見る</a>
+</div>
+
+<script>
+    //---------------------------------------------------
+    // 音声入力 5 秒 & 途切れ防止 0.2秒遅延
+    //---------------------------------------------------
+    const voiceBtn = document.getElementById("voiceBtn");
+    let mediaRecorder;
+    let audioChunks = [];
+
+    voiceBtn.addEventListener("click", async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+
+            // 途切れ防止 → 録音開始を少し遅らせる
+            setTimeout(() => mediaRecorder.start(), 200);
+
+            setTimeout(() => mediaRecorder.stop(), 5000); // ← 録音5秒
+
+            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+            mediaRecorder.onstop = async () => {
+                const blob = new Blob(audioChunks, {type:"audio/mp3"});
+                const formData = new FormData();
+                formData.append("audio", blob, "voice.mp3");
+
+                const res = await fetch("/voice", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await res.json();
+                document.getElementById("user_input").value = data.text;  // ← 入力欄に残す
+
+                sendText();
+            };
+        } catch (e) {
+            alert("マイクが許可されていません。");
+        }
+    });
+
+
+    //---------------------------------------------------
+    // テキスト送信
+    //---------------------------------------------------
+    document.getElementById("askBtn").addEventListener("click", sendText);
+
+    async function sendText() {
+        const text = document.getElementById("user_input").value;
         if (!text) return;
 
-        document.getElementById("responseArea").innerHTML = "ゆうくんが考え中…";
-
-        fetch("/talk", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ message: text })
-        })
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("responseArea").innerHTML = data.reply;
-
-            const player = document.getElementById("voicePlayer");
-            player.style.display = "block";
-            player.src = data.audio_url + "?t=" + Date.now();
-
-            /* 🔥 音切れ防止：load → 少し待って → play */
-            player.load();
-            setTimeout(() => {
-                player.play().catch(e => console.warn("再生エラー:", e));
-            }, 120);
-        })
-        .catch(err => {
-            document.getElementById("responseArea").innerHTML =
-                "ごめんね、なんだかエラーが起きたみたい。もう一度言ってね。";
-            console.error(err);
+        const res = await fetch("/talk", {
+            method:"POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ user_text: text })
         });
 
-        document.getElementById("userInput").value = "";
+        const data = await res.json();
+
+        // 返答テキスト
+        document.getElementById("responseArea").innerHTML =
+            `${data.reply}<br><br><audio controls src="${data.audio_url}"></audio>`;
     }
-    </script>
+</script>
+
 </body>
 </html>
