@@ -2,29 +2,27 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>{{ date }} の会話ログ</title>
+    <title>{{ date }} のログ</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
 <div class="container">
     <h2>🗓 {{ date }} の会話ログ</h2>
-    <p><a href="/logs">📅 カレンダーへ戻る</a></p>
+    <p><a href="/logs">📅 カレンダーに戻る</a></p>
 
     {% if logs %}
-        <ul>
-            {% for item in logs %}
-                <li style="margin-bottom:20px;">
-                    <strong>{{ item.time }}</strong><br>
-                    👤 <b>あなた:</b> {{ item.user }}<br>
-                    🧒 <b>ゆうくん:</b> {{ item.reply }}<br>
+        {% for item in logs %}
+            <div style="padding:10px; border-bottom:1px solid #ccc; margin-bottom:15px;">
+                <strong>{{ item.time }}</strong><br>
+                👤 <b>あなた:</b> {{ item.user }}<br>
+                🧒 <b>ゆうくん:</b> {{ item.reply }}<br>
 
-                    {% if item.audio_url %}
-                        🎧 <audio controls src="{{ item.audio_url }}" style="width:100%; margin-top:5px;"></audio>
-                    {% endif %}
-                </li>
-            {% endfor %}
-        </ul>
+                {% if item.audio_url %}
+                    <audio controls src="{{ item.audio_url }}" style="width:100%; margin-top:8px;"></audio>
+                {% endif %}
+            </div>
+        {% endfor %}
     {% else %}
         <p>ログはありません。</p>
     {% endif %}
