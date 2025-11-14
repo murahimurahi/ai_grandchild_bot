@@ -13,9 +13,10 @@
             <h2>AI Grandchild Bot</h2>
         </div>
 
+        <!-- LINE風ログ -->
         <div id="messages" class="messages"></div>
 
-        <!-- 音声ログブロック（各メッセージの下に JS で追加される） -->
+        <!-- 音声ログ -->
         <div id="voice-logs" class="voice-logs"></div>
 
         <!-- 入力欄 -->
@@ -24,7 +25,6 @@
             <button id="sendBtn">送信</button>
         </div>
 
-        <!-- 音声ボタン（見た目は残すが自動認識ON） -->
         <button id="voiceBtn" class="voice-button">🎤</button>
 
     </div>
@@ -36,15 +36,39 @@
         const textInput = document.getElementById("textInput");
         const voiceBtn = document.getElementById("voiceBtn");
 
-        // ---------------------------
-        // 音声認識（自動スタート）
-        // ---------------------------
+        // ----------------------------------------------------------
+        // LINE風吹き出し：右（あなた）｜左（AI）
+        // ----------------------------------------------------------
+        function addBubble(sender, text) {
+            const div = document.createElement("div");
+            div.className = sender === "あなた" ? "bubble-right" : "bubble-left";
+            div.innerHTML = text;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // ----------------------------------------------------------
+        // 音声ログ追加
+        // ----------------------------------------------------------
+        function addVoiceLog(url) {
+            const audio = document.createElement("audio");
+            audio.controls = true;
+            audio.src = url;
+            audio.style.width = "100%";
+            audio.className = "voice-log-item";
+
+            voiceLogsDiv.appendChild(audio);
+            voiceLogsDiv.scrollTop = voiceLogsDiv.scrollHeight;
+        }
+
+        // ----------------------------------------------------------
+        // 音声認識（自動ON）
+        // ----------------------------------------------------------
         let recognition;
         if ('webkitSpeechRecognition' in window) {
             recognition = new webkitSpeechRecognition();
             recognition.lang = "ja-JP";
             recognition.continuous = true;
-            recognition.interimResults = false;
 
             recognition.onresult = function(event) {
                 const text = event.results[event.results.length - 1][0].transcript;
@@ -55,27 +79,26 @@
         }
 
         voiceBtn.onclick = () => {
-            // ボタンは残すが、自動で常時ONなので予備
             if (recognition) recognition.start();
         };
 
-        // ---------------------------
-        // メッセージ送信
-        // ---------------------------
+        // ----------------------------------------------------------
+        // 送信処理
+        // ----------------------------------------------------------
         sendBtn.onclick = () => {
             const text = textInput.value.trim();
-            if (text !== "") sendText(text);
+            if (text) sendText(text);
         };
 
         textInput.addEventListener("keydown", e => {
             if (e.key === "Enter") sendBtn.click();
         });
 
-        // ---------------------------
-        // サーバーへ送信
-        // ---------------------------
+        // ----------------------------------------------------------
+        // /api/chat
+        // ----------------------------------------------------------
         function sendText(text) {
-            addMessage("あなた", text);
+            addBubble("あなた", text);
             textInput.value = "";
 
             fetch("/api/chat", {
@@ -85,37 +108,12 @@
             })
             .then(res => res.json())
             .then(data => {
-                addMessage("AI孫", data.reply);
+                addBubble("AI孫", data.reply);
 
-                // 音声URL（会話ごと）
                 if (data.voice_url) {
                     addVoiceLog(data.voice_url);
                 }
             });
-        }
-
-        // ---------------------------
-        // メッセージ描画
-        // ---------------------------
-        function addMessage(sender, text) {
-            const div = document.createElement("div");
-            div.className = "message";
-            div.innerHTML = `<strong>${sender}：</strong> ${text}`;
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        // ---------------------------
-        // 音声ログ追加（各会話の下）
-        // ---------------------------
-        function addVoiceLog(url) {
-            const audio = document.createElement("audio");
-            audio.controls = true;
-            audio.src = url;
-            audio.className = "voice-log-item";
-
-            voiceLogsDiv.appendChild(audio);
-            voiceLogsDiv.scrollTop = voiceLogsDiv.scrollHeight;
         }
     </script>
 
