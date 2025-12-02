@@ -10,46 +10,69 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
 
 # --------------------------------
-# 今日の天気
+# 日本語 → 英語 都市名マップ
+# --------------------------------
+CITY_MAP = {
+    "名古屋": "Nagoya",
+    "東京": "Tokyo",
+    "大阪": "Osaka",
+    "横浜": "Yokohama",
+    "札幌": "Sapporo",
+    "福岡": "Fukuoka",
+    "仙台": "Sendai",
+    "京都": "Kyoto",
+    "神戸": "Kobe",
+}
+
+def normalize_city(name):
+    name = name.strip()
+    return CITY_MAP.get(name, name)
+
+
+# --------------------------------
+# 今日の天気（日本語都市名を英語に変換）
 # --------------------------------
 def get_weather(text):
     try:
         import re
         m = re.search(r"(.*)の天気", text)
-        city = m.group(1) if m else "名古屋"
+        city_jp = m.group(1).strip() if m else "名古屋"
+        city = normalize_city(city_jp)
 
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
         r = requests.get(url)
         data = r.json()
 
         if data.get("cod") != 200:
-            return f"{city}の天気は見つかりませんでした。"
+            return f"{city_jp}の天気は見つかりませんでした。"
 
         temp = data["main"]["temp"]
         desc = data["weather"][0]["description"]
-        return f"{city}の天気は {desc}、気温は {temp:.1f} 度みたいですよ。"
 
-    except:
+        return f"{city_jp}の天気は {desc}、気温は {temp:.1f} 度みたいですよ。"
+
+    except Exception as e:
+        print("WEATHER ERROR:", e)
         return "天気を取得できませんでした。"
 
 
 # --------------------------------
-# 明日の天気
+# 明日の天気（forecast API）
 # --------------------------------
 def get_tomorrow_weather(text):
     try:
         import re
         m = re.search(r"(.*)の?明日の天気", text)
-        city = m.group(1) if m else "名古屋"
+        city_jp = m.group(1).strip() if m else "名古屋"
+        city = normalize_city(city_jp)
 
         url = f"http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
         r = requests.get(url)
         data = r.json()
 
         if data.get("cod") != "200":
-            return f"{city}の明日の天気は見つかりませんでした。"
+            return f"{city_jp}の明日の天気は見つかりませんでした。"
 
-        # 明日の12時を採用（もっとも安定）
         target = None
         for item in data["list"]:
             if "12:00:00" in item["dt_txt"]:
@@ -57,12 +80,12 @@ def get_tomorrow_weather(text):
                 break
 
         if not target:
-            return f"{city}の明日の天気を取得できませんでした。"
+            return f"{city_jp}の明日の天気を取得できませんでした。"
 
         desc = target["weather"][0]["description"]
         temp = target["main"]["temp"]
 
-        return f"{city}の明日の天気は {desc}、気温は {temp:.1f} 度みたいですよ。"
+        return f"{city_jp}の明日の天気は {desc}、気温は {temp:.1f} 度みたいですよ。"
 
     except Exception as e:
         print("TOMORROW ERROR:", e)
@@ -75,20 +98,22 @@ def get_tomorrow_weather(text):
 def ai_reply(text):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+
     payload = {
         "model": "gpt-4o-mini",
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "あなたは優しい孫のゆうくんとして、必ず丁寧語で話します。"
+                    "あなたは優しい孫の『ゆうくん』として、必ず丁寧語で話します。"
                     "相手を『おじいちゃん』『おばあちゃん』とは呼ばず、"
-                    "『あなた』『お客さん』などに統一してください。"
+                    "『あなた』『お客さん』に統一してください。"
                 )
             },
             {"role": "user", "content": text}
         ]
     }
+
     r = requests.post(url, headers=headers, json=payload)
     return r.json()["choices"][0]["message"]["content"]
 
@@ -102,11 +127,15 @@ def generate_voice(text, path):
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
-    payload = {"model": "gpt-4o-mini-tts", "voice": "verse", "input": text}
+
+    payload = {
+        "model": "gpt-4o-mini-tts",
+        "voice": "verse",
+        "input": text
+    }
 
     r = requests.post(url, headers=headers, json=payload)
 
-    # デバッグ用
     if r.status_code != 200:
         print("TTS ERROR:", r.text)
 
@@ -115,19 +144,19 @@ def generate_voice(text, path):
 
 
 # --------------------------------
-# 画面
+# HTML ページ
 # --------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
 @app.route("/chat")
-def chat_page():
+def chat():
     return render_template("chat.html")
 
 
 # --------------------------------
-# 音声提供
+# 音声ファイル提供
 # --------------------------------
 @app.route("/logs/<day>/<fname>")
 def serve_voice(day, fname):
@@ -142,7 +171,7 @@ def api_chat():
     data = request.json
     user_text = data.get("text", "").strip()
 
-    # 天気系優先
+    # 天気 優先判定
     if "明日の天気" in user_text:
         reply = get_tomorrow_weather(user_text)
 
@@ -158,7 +187,7 @@ def api_chat():
     else:
         reply = ai_reply(user_text)
 
-    # 保存
+    # 返答保存
     day = datetime.now().strftime("%Y-%m-%d")
     if not os.path.exists(f"logs/{day}"):
         os.makedirs(f"logs/{day}")
@@ -171,6 +200,7 @@ def api_chat():
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump({"user": user_text, "bot": reply}, f, ensure_ascii=False)
 
+    # TTS生成
     generate_voice(reply, mp3_path)
 
     return jsonify({
@@ -180,7 +210,7 @@ def api_chat():
 
 
 # --------------------------------
-# 実行
+# 起動
 # --------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
