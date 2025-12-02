@@ -2,20 +2,30 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>会話カレンダー</title>
+    <title>おはなし横丁 - 会話カレンダー</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
-<div class="container small">
-    <h2>📅 会話カレンダー</h2>
-    <p><a href="/">🏠 ホームに戻る</a></p>
+    <div class="chat-container">
 
-    <ul>
-        {% for d in days %}
-            <li><a href="/logs/{{ d }}">{{ d }}</a></li>
-        {% endfor %}
-    </ul>
-</div>
+        <h2>会話カレンダー</h2>
+        <p class="subtitle">過去にゆうくんと話した日一覧だよ。</p>
+
+        <ul style="padding-left: 0;">
+            {% for day in days %}
+            <li style="list-style:none; margin-bottom:12px;">
+                <a href="/logs/{{ day }}" style="color:#409cff; font-size:16px;">
+                    📅 {{ day }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div style="margin-top:20px;">
+            <a href="/" style="color:#888; font-size:14px;">← トップに戻る</a>
+        </div>
+
+    </div>
 </body>
 </html>
