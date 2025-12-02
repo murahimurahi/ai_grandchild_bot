@@ -4,27 +4,22 @@
     <meta charset="UTF-8">
     <title>おはなし横丁</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/chat.js" defer></script>
 </head>
 
 <body>
-<div class="chat-container">
+    <div class="chat-container">
+        <h2>おはなし横丁</h2>
+        <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
 
-    <h1 class="title">おはなし横丁</h1>
-    <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
+        <div id="chat-box" class="chat-box"></div>
 
-    <div id="messages" class="messages"></div>
+        <input id="chat-input" class="chat-input" placeholder="メッセージを入力してね">
+        <button id="send-btn" class="send-btn">送信</button>
 
-    <div class="input-area">
-        <input id="textInput" type="text" placeholder="メッセージを入力してね">
-        <button id="sendBtn">送信</button>
+        <button id="voice-btn" class="voice-btn">🎤 音声入力</button>
+
+        <div id="voice-log-area" class="voice-log-area"></div>
     </div>
-
-    <button id="voiceBtn" class="voice-button">🎤 音声入力</button>
-
-    <div id="voice-log-area" class="voice-log-area"></div>
-
-</div>
-
-<script src="/static/chat.js"></script>
 </body>
 </html>
