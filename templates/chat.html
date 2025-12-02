@@ -4,22 +4,35 @@
     <meta charset="UTF-8">
     <title>おはなし横丁</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="/static/chat.js" defer></script>
 </head>
 
 <body>
-    <div class="chat-container">
+
+<div class="chat-container">
+
+    <!-- ヘッダー（名称は“今のまま”） -->
+    <div class="chat-header">
         <h2>おはなし横丁</h2>
-        <p class="subtitle">ゆうくんと、楽しく話す時間だよ。</p>
-
-        <div id="chat-box" class="chat-box"></div>
-
-        <input id="chat-input" class="chat-input" placeholder="メッセージを入力してね">
-        <button id="send-btn" class="send-btn">送信</button>
-
-        <button id="voice-btn" class="voice-btn">🎤 音声入力</button>
-
-        <div id="voice-log-area" class="voice-log-area"></div>
+        <p class="chat-sub">ゆうくんと、ゆっくりお話ししましょう。</p>
     </div>
+
+    <!-- メッセージ表示欄 -->
+    <div id="messages" class="messages"></div>
+
+    <!-- 音声ログ -->
+    <div id="voice-logs" class="voice-logs"></div>
+
+    <!-- 入力欄（下部固定） -->
+    <div class="input-area">
+        <input id="textInput" type="text" placeholder="入力または音声で話しかけてください…">
+        <button id="sendBtn">送信</button>
+    </div>
+
+    <!-- 音声入力ボタン（黄色の長方形・あなたの希望通り） -->
+    <button id="voiceBtn" class="voice-button">🎤 音声入力</button>
+
+</div>
+
+<script src="/static/chat.js"></script>
 </body>
 </html>
