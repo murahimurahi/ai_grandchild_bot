@@ -1,65 +1,109 @@
-/* -----------------------------
-   基本レイアウト（中央寄せ）
------------------------------ */
+/* =============================
+   全体・中央寄せ
+============================= */
 body {
     margin: 0;
     padding: 0;
-    background: #f5f5f5;
-    font-family: "游ゴシック", sans-serif;
+    background: #f8f3e8; /* 柔らかいクリーム色 */
+    font-family: "游ゴシック", "Noto Sans JP", sans-serif;
 
     display: flex;
     justify-content: center;
     align-items: flex-start;
+
     min-height: 100vh;
 }
 
-/* -----------------------------
-   コンテナ
------------------------------ */
+/* =============================
+   チャット全体枠
+============================= */
 .chat-container {
     width: 90%;
     max-width: 480px;
-
     background: #ffffff;
     margin-top: 40px;
     padding: 20px;
-    border-radius: 14px;
-
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-
-    /* 画面中央に固定 */
-    margin-left: auto;
-    margin-right: auto;
+    border-radius: 16px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
 }
 
-/* -----------------------------
+/* =============================
    ヘッダー
------------------------------ */
+============================= */
 .chat-header {
     text-align: center;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
 }
 
 .chat-header h2 {
     margin: 0;
-    font-size: 22px;
+    font-size: 24px;
 }
 
-/* -----------------------------
+.chat-sub {
+    margin: 5px 0 15px;
+    font-size: 14px;
+    color: #775;
+}
+
+/* =============================
    メッセージ欄
------------------------------ */
+============================= */
 .messages {
     height: 300px;
     overflow-y: auto;
-    background: #fafafa;
-    padding: 12px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
+    padding: 10px;
+    background: #faf5eb;
+    border-radius: 12px;
+    border: 1px solid #e6ddc7;
+    margin-bottom: 15px;
 }
 
-/* -----------------------------
-   入力エリア
------------------------------ */
+/* 吹き出し共通 */
+.message {
+    max-width: 80%;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    line-height: 1.5;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* あなた側（右） */
+.message.user {
+    margin-left: auto;
+    background: #fff3c7;
+    border: 1px solid #f2da8a;
+}
+
+/* ゆうくん側（左） */
+.message.bot {
+    margin-right: auto;
+    background: #dfefff;
+    border: 1px solid #b7d6ff;
+}
+
+/* =============================
+   音声ログカード
+============================= */
+.voice-logs {
+    background: #fff7e5;
+    border: 1px solid #e6c88c;
+    padding: 10px;
+    border-radius: 12px;
+    max-height: 180px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.voice-log-item {
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+/* =============================
+   入力エリア（固定ではなく自然配置）
+============================= */
 .input-area {
     display: flex;
     margin-top: 15px;
@@ -67,49 +111,32 @@ body {
 
 .input-area input {
     flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #c7c7c7;
     font-size: 16px;
 }
 
 .input-area button {
-    padding: 11px 18px;
-    margin-left: 8px;
+    padding: 12px 18px;
+    margin-left: 10px;
     border: none;
-    background: #0078ff;
+    background: #ffb300;
     color: white;
     font-size: 16px;
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
-/* -----------------------------
-   音声ボタン
------------------------------ */
+/* =============================
+   音声入力ボタン（A：既存の黄色ボタン）
+============================= */
 .voice-button {
     width: 100%;
-    margin-top: 12px;
-    padding: 12px;
+    margin-top: 10px;
+    padding: 14px;
     background: #ffe08a;
-    border-radius: 10px;
-    border:none;
-    font-size: 18px;
-}
-
-/* -----------------------------
-   音声ログ
------------------------------ */
-.voice-logs {
-    margin-top: 20px;
-    padding: 10px;
-    background: #fff6e5;
-    border: 1px solid #e6c88c;
     border-radius: 12px;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.voice-log-item {
-    width: 100%;
-    margin-bottom: 10px;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
 }
