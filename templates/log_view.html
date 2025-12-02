@@ -2,35 +2,31 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>{{ day }} の会話ログ</title>
+    <title>会話ログ - {{ day }}</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body>
-<div class="container small">
+    <div class="chat-container">
 
-    <h2>📘 {{ day }} の会話</h2>
-    <p><a href="/logs">📅 カレンダーに戻る</a></p>
+        <h2>{{ day }} の会話</h2>
+        <p class="subtitle">ゆうくんとのやりとりだよ。</p>
 
-    {% for item in entries %}
-        <div class="log-entry">
+        {% for entry in entries %}
+        <div class="msg" style="margin-bottom:20px;">
+            <strong>あなた：</strong> {{ entry.user }}<br>
+            <strong>ゆうくん：</strong> {{ entry.bot }}
 
-            <pre class="logbox">
-【時刻】{{ item.id[11:19] }}
-【あなた】{{ item.user }}
-【ゆうくん】{{ item.bot }}
-            </pre>
-
-            {% if item.audio %}
-                <audio controls src="{{ item.audio }}" style="width:100%; margin-top:8px;"></audio>
-            {% else %}
-                <p>（音声なし）</p>
-            {% endif %}
-
-            <hr>
+            <audio controls style="width:100%; margin-top:10px;">
+                <source src="{{ entry.audio }}" type="audio/mpeg">
+            </audio>
         </div>
-    {% endfor %}
+        {% endfor %}
 
-</div>
+        <div style="margin-top:20px;">
+            <a href="/logs" style="color:#888; font-size:14px;">← 日付一覧に戻る</a>
+        </div>
+
+    </div>
 </body>
 </html>
