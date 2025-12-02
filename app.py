@@ -3,70 +3,86 @@ import json
 from datetime import datetime
 import requests
 from flask import Flask, request, jsonify, render_template, send_from_directory
-from zoneinfo import ZoneInfo   # ← JST対応
 
 app = Flask(__name__)
 
-# --------------------------------
-# API Keys
-# --------------------------------
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
 
 # --------------------------------
-# JST設定（ここが一番重要）
+# 都市名の辞書（日本語 → 英語）
 # --------------------------------
-JST = ZoneInfo("Asia/Tokyo")
+CITY_MAP = {
+    "名古屋": "Nagoya",
+    "東京": "Tokyo",
+    "大阪": "Osaka",
+    "京都": "Kyoto",
+    "横浜": "Yokohama",
+    "札幌": "Sapporo",
+    "福岡": "Fukuoka",
+    "神戸": "Kobe",
+    "仙台": "Sendai",
+}
+
+def convert_city_name(city_jp):
+    """日本語 → 英語。未登録の場合は日本語をそのまま返す。"""
+    return CITY_MAP.get(city_jp, city_jp)
 
 
 # --------------------------------
-# 今日の天気（正常動作版）
+# 今日の天気
 # --------------------------------
 def get_weather(text):
     try:
         import re
         m = re.search(r"(.*)の天気", text)
-        city = m.group(1).replace("の", "") if m else "名古屋"
+        city_jp = m.group(1) if m else "名古屋"
+
+        city_api = convert_city_name(city_jp)
 
         url = (
             f"http://api.openweathermap.org/data/2.5/weather?"
-            f"q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
+            f"q={city_api}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
         )
+
         r = requests.get(url)
         data = r.json()
 
         if data.get("cod") != 200:
-            return f"{city}の天気は見つかりませんでした。"
+            return f"{city_jp}の天気は見つかりませんでした。"
 
         temp = data["main"]["temp"]
         desc = data["weather"][0]["description"]
-        return f"{city}の天気は {desc}、気温は {temp:.1f} 度のようですよ。"
 
-    except Exception as e:
-        print("WEATHER ERROR:", e)
+        return f"{city_jp}の天気は {desc}、気温は {temp:.1f} 度みたいですよ。"
+
+    except:
         return "天気を取得できませんでした。"
 
 
 # --------------------------------
-# 明日の天気（安定版）
+# 明日の天気
 # --------------------------------
 def get_tomorrow_weather(text):
     try:
         import re
         m = re.search(r"(.*)の?明日の天気", text)
-        city = m.group(1).replace("の", "") if m else "名古屋"
+        city_jp = m.group(1) if m else "名古屋"
+
+        city_api = convert_city_name(city_jp)
 
         url = (
             f"http://api.openweathermap.org/data/2.5/forecast?"
-            f"q={city}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
+            f"q={city_api}&appid={OPENWEATHER_API_KEY}&units=metric&lang=ja"
         )
 
         r = requests.get(url)
         data = r.json()
 
         if data.get("cod") != "200":
-            return f"{city}の明日の天気は見つかりませんでした。"
+            return f"{city_jp}の明日の天気は見つかりませんでした。"
 
+        # 明日の12時データを採用
         target = None
         for item in data["list"]:
             if "12:00:00" in item["dt_txt"]:
@@ -74,11 +90,12 @@ def get_tomorrow_weather(text):
                 break
 
         if not target:
-            return f"{city}の明日の天気を取得できませんでした。"
+            return f"{city_jp}の明日の天気を取得できませんでした。"
 
         desc = target["weather"][0]["description"]
         temp = target["main"]["temp"]
-        return f"{city}の明日の天気は {desc}、気温は {temp:.1f} 度のようですよ。"
+
+        return f"{city_jp}の明日の天気は {desc}、気温は {temp:.1f} 度みたいですよ。"
 
     except Exception as e:
         print("TOMORROW ERROR:", e)
@@ -86,27 +103,25 @@ def get_tomorrow_weather(text):
 
 
 # --------------------------------
-# AI応答（丁寧語＋呼称制限）
+# AI返答（丁寧語＋呼称ルール）
 # --------------------------------
 def ai_reply(text):
     url = "https://api.openai.com/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
-
     payload = {
         "model": "gpt-4o-mini",
         "messages": [
             {
                 "role": "system",
                 "content": (
-                    "あなたは優しい孫のゆうくんとして必ず丁寧語で話します。"
+                    "あなたは優しい孫のゆうくんとして、必ず丁寧語で話します。"
                     "相手を『おじいちゃん』『おばあちゃん』とは呼ばず、"
-                    "『あなた』『お客さん』などの呼び方に統一してください。"
+                    "『あなた』『お客さん』などに統一してください。"
                 )
             },
             {"role": "user", "content": text}
         ]
     }
-
     r = requests.post(url, headers=headers, json=payload)
     return r.json()["choices"][0]["message"]["content"]
 
@@ -120,11 +135,11 @@ def generate_voice(text, path):
         "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
-
     payload = {"model": "gpt-4o-mini-tts", "voice": "verse", "input": text}
 
     r = requests.post(url, headers=headers, json=payload)
 
+    # デバッグ
     if r.status_code != 200:
         print("TTS ERROR:", r.text)
 
@@ -133,12 +148,11 @@ def generate_voice(text, path):
 
 
 # --------------------------------
-# HTMLルート
+# 画面
 # --------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 @app.route("/chat")
 def chat_page():
@@ -146,10 +160,10 @@ def chat_page():
 
 
 # --------------------------------
-# 音声配信
+# 音声ファイル配信
 # --------------------------------
 @app.route("/logs/<day>/<fname>")
-def serve_voice(day, fname):
+def voice_file(day, fname):
     return send_from_directory(f"logs/{day}", fname)
 
 
@@ -161,10 +175,7 @@ def api_chat():
     data = request.json
     user_text = data.get("text", "").strip()
 
-    # ==== JST 現在時刻 ====
-    now = datetime.now(JST)
-
-    # ===== 返答判定 =====
+    # ▼ 優先ルール
     if "明日の天気" in user_text:
         reply = get_tomorrow_weather(user_text)
 
@@ -172,23 +183,20 @@ def api_chat():
         reply = get_weather(user_text)
 
     elif "何時" in user_text or "時間" in user_text:
-        reply = f"今は {now.strftime('%H時%M分')} のようですよ。"
+        reply = f"今は {datetime.now().strftime('%H時%M分')} のようですよ。"
 
     elif "今日" in user_text and "日" in user_text:
-        reply = f"今日は {now.strftime('%Y年%m月%d日')} のようですよ。"
+        reply = f"今日は {datetime.now().strftime('%Y年%m月%d日')} のようですよ。"
 
     else:
         reply = ai_reply(user_text)
 
-    # --------------------------------
-    # ログ保存
-    # --------------------------------
-    day = now.strftime("%Y-%m-%d")
-
+    # ▼ 保存
+    day = datetime.now().strftime("%Y-%m-%d")
     if not os.path.exists(f"logs/{day}"):
         os.makedirs(f"logs/{day}")
 
-    cid = now.strftime("%H-%M-%S")
+    cid = datetime.now().strftime("%H-%M-%S")
 
     json_path = f"logs/{day}/{cid}.json"
     mp3_path = f"logs/{day}/{cid}.mp3"
